@@ -522,3 +522,27 @@ describe("SDK streaming", () => {
     });
   });
 });
+
+describe("current Claude model controls", () => {
+  it("omits removed sampling settings and preserves latency-sensitive behavior", async () => {
+    const { anthropicControls } = await import("@/lib/llm/anthropic");
+    expect(anthropicControls("claude-haiku-5-5", "supervisor")).toEqual({
+      thinking: { type: "disabled" },
+    });
+    expect(anthropicControls("claude-sonnet-5-5", "chat_proxy")).toEqual({
+      thinking: { type: "between_tools" },
+      output_config: { effort: "low" },
+    });
+    expect(anthropicControls("claude-opus-5-5", "brief")).toEqual({
+      thinking: { type: "adaptive" },
+      output_config: { effort: "high" },
+    });
+    expect(
+      anthropicControls("claude-opus-5-5", "ping").output_config?.effort,
+    ).toBe("low");
+    expect(() => anthropicControls("claude-opus-5-5", "supervisor")).toThrow();
+    expect(
+      anthropicControls("claude-haiku-4-5", "dossier", 0.2).temperature,
+    ).toBe(0.2);
+  });
+});

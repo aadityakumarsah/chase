@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { loadEnvConfig } from "@next/env";
 import { afterAll, expect, test } from "vitest";
+import { LLMError } from "@/lib/llm/types";
 loadEnvConfig(process.cwd(), true, { info() {}, error() {} });
 const cases = [
   {
@@ -42,8 +43,10 @@ test.skipIf(process.env.RUN_LLM_EVALS !== "1")(
         if (ok) passed++;
         if (c.file === "stop") optout = ok;
         console.log(`${c.file}: ${ok ? "PASS" : "FAIL"}`);
-      } catch {
-        console.log(`${c.file}: FAIL (provider/schema error)`);
+      } catch (error) {
+        console.log(
+          `${c.file}: FAIL (${error instanceof LLMError ? error.message : "provider/schema error"})`,
+        );
       }
     }
     expect(optout, "Opt-out must never be missed").toBe(true);

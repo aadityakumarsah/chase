@@ -4,7 +4,7 @@
 
 Set `LLM_PROVIDER` and that provider's credential (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `DEEPSEEK_API_KEY`, `TOGETHER_API_KEY`, or generic `LLM_API_KEY`). Generic `LLM_API_KEY` takes precedence for the selected primary provider. Custom compatible services require `LLM_BASE_URL`. No environment file is written by this layer.
 
-Set `LLM_MODEL_FAST`, `LLM_MODEL_SMART`, and `LLM_MODEL_DEEP` to models available on the selected account. Existing project defaults are preserved, not claimed to have been live verified. Each task supports `LLM_MODEL_FOR_<UPPERCASE_TASK>`.
+Set `LLM_MODEL_FAST`, `LLM_MODEL_SMART`, and `LLM_MODEL_DEEP` to models available on the selected account. Existing Haiku 5.5, Sonnet 5.5 and Opus 5.5 defaults passed live structured pings on 29 October 2026. Each task supports `LLM_MODEL_FOR_<UPPERCASE_TASK>`.
 
 - FAST: dossier, supervisor, rating_rationale, ping.
 - SMART: call_analysis, persona_sim, sim_judge, chat_proxy.
@@ -23,7 +23,7 @@ Fallback requires both `LLM_FALLBACK_PROVIDER` and `LLM_FALLBACK_MODEL`, plus th
 
 `getLLM()` exposes text, typed objects and streaming with a shared task router. System parts mark the final stable prefix boundary; Anthropic sends an ephemeral cache control on that block. Small prompts may not meet the provider's cache minimum, so cache tokens can legitimately be zero. Compatible providers report cache reads when their usage response supplies them; explicit Anthropic-style caching is not claimed for those providers.
 
-Anthropic uses the installed SDK's `messages.parse` and `zodOutputFormat` with Zod 4. The parse wrapper normalizes only schema-declared enum values, and defers parsing errors long enough to inspect refusal/max-token stop reasons and retain usage. Local Zod validation still enforces numeric, length and semantic constraints. Tools carry strict schemas with preflight checks for 20 strict tools and 24 optional parameters. Streaming emits text/tool deltas and a final result; execution of tools and the HTTP proxy remain Part 9 work. Thinking is disabled, including supervisor and proxy requests; task depth here comes from explicit model routing and structured tasks.
+Anthropic uses the installed SDK's `messages.parse` and `zodOutputFormat` with Zod 4. The parse wrapper normalizes only schema-declared enum values, and defers parsing errors long enough to inspect refusal/max-token stop reasons and retain usage. Local Zod validation still enforces numeric, length and semantic constraints. Tools carry strict schemas with preflight checks for 20 strict tools and 24 optional parameters. Streaming emits text/tool deltas and a final result; execution of tools and the HTTP proxy remain Part 9 work. Current-model controls follow the live API: Haiku 5.5 uses disabled thinking; Sonnet 5.5 uses between_tools at low effort (no upfront thinking); Opus 5.5 requires adaptive thinking, with low effort for ping and high effort for deep work. Opus 5.5 is rejected for supervisor/proxy tasks. Current Claude models omit temperature; legacy models retain low-temperature settings. Structured output format and effort are merged.
 
 Every provider attempt records task, provider/model, feature flags, usage, elapsed latency and sanitized success/error in `llm_calls`. Retries stay within the provider attempt; the JSON repair's returned usage is accumulated. Configuration failures record zero usage without claiming a network call occurred. Failed calls can have unknown usage if no provider usage response arrived; consumer-cancelled streams may also lack final usage. Errors never store raw SDK messages, headers or prompts. Telemetry failure is explicit and cannot cause a second paid provider call.
 
@@ -43,6 +43,14 @@ Bolna variables accept explicit domain paise. The required integer `outstanding_
 - [DeepSeek API](https://api-docs.deepseek.com/) — `https://api.deepseek.com`.
 - [Together compatibility](https://docs.together.ai/docs/inference/openai-compatibility) — `https://api.together.ai/v1`, replacing the historical `.xyz` default.
 
-## Verification limitation
+## Live verification — 29 October 2026
 
-No LLM credentials were configured during Part 3 implementation. The private Anthropic credential request timed out. The three-tier ping and demo compilation fail explicitly with configuration errors; the enabled analysis eval likewise cannot run model inference. Mocked SDK tests and DB fixture checks are separate evidence and do not satisfy the live acceptance gate. After configuring credentials and account-valid model names, rerun the commands above before claiming Part 3 fully verified.
+The user supplied an Anthropic key after the implementation commit. All three structured tier pings pass; the six-transcript eval passes its minimum five successes and mandatory opt-out assertions. All six analysis requests have successful llm_calls rows with cache reads. The generated Sharma dossier records the broken ₹5,000 promise due 2026-10-05, and a repeated compile makes no new model call. Unit tests: 83 passing. Provider costs remain null until pricing is supplied; compatible-provider live checks require a separate configured credential.
+
+The live eval config explicitly loads local development environment settings before Vitest workers start because Next skips .env.local in test mode. This applies only with RUN_LLM_EVALS=1.
+
+Current-model adaptation references:
+
+- [Haiku 5.5 migration](https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide) — omit sampling controls.
+- [Sonnet 5.5 overview](https://platform.claude.com/docs/en/models/sonnet-5-5/overview) — between_tools disables upfront thinking.
+- [Opus 5.5 migration](https://platform.claude.com/docs/en/models/opus-5-5/migration-guide) — adaptive thinking is required; disabled thinking and sampling controls are rejected.

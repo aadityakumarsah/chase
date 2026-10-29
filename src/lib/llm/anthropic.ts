@@ -27,6 +27,33 @@ function outputFormat<T>(schema: z.ZodType<T>) {
     throw new LLMError("configuration");
   }
 }
+// Current Claude models removed sampling controls; keep legacy model behavior explicit.
+export function anthropicControls(
+  model: string,
+  task: TextRequest["task"],
+  temperature = 0.1,
+): Pick<
+  Anthropic.MessageCreateParamsNonStreaming,
+  "thinking" | "output_config"
+> & { temperature?: number } {
+  const modern = /claude-(?:haiku|sonnet|opus)-(?:[5-9]|4-[789])(?:-|$)/.test(
+    model,
+  );
+  if (/claude-opus-5-5(?:-|$)/.test(model)) {
+    if (task === "supervisor" || task === "chat_proxy")
+      throw new LLMError("configuration");
+    return {
+      thinking: { type: "adaptive" },
+      output_config: { effort: task === "ping" ? "low" : "high" },
+    };
+  }
+  if (/claude-sonnet-5-5(?:-|$)/.test(model))
+    return {
+      thinking: { type: "between_tools" },
+      output_config: { effort: "low" },
+    };
+  return { thinking: { type: "disabled" }, ...(modern ? {} : { temperature }) };
+}
 export function systemBlocks(parts: SystemPart[]): Anthropic.TextBlockParam[] {
   const last = parts.findLastIndex((p) => p.cache);
   return parts.map((p, i) => ({
@@ -74,8 +101,7 @@ export class AnthropicProvider implements LLMProvider {
       system: systemBlocks(i.system),
       messages: i.messages,
       max_tokens: i.maxTokens,
-      temperature: i.temperature ?? 0.1,
-      thinking: { type: "disabled" as const },
+      ...anthropicControls(this.model(i.task), i.task, i.temperature),
     };
   }
   async generateText(i: TextRequest) {
@@ -128,7 +154,10 @@ export class AnthropicProvider implements LLMProvider {
       const r = await retry(
         () =>
           this.client.messages.parse(
-            { ...this.params(i), output_config: { format } },
+            {
+              ...this.params(i),
+              output_config: { ...this.params(i).output_config, format },
+            },
             { signal },
           ),
         signal,
