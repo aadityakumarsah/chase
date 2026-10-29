@@ -15,6 +15,13 @@
       "when": 1793279979477,
       "tag": "0001_minor_speed_demon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793281783315,
+      "tag": "0002_tan_makkari",
+      "breakpoints": true
     }
   ]
 }

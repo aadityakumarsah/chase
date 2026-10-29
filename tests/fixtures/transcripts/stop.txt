@@ -1,0 +1,3 @@
+assistant: Namaste, main Shree Ganesh Traders ka AI assistant hoon. Kya Neha ji se baat ho rahi hai?
+user: Haan Neha bol rahi hoon. Bahut calls kar liye! Stop calling me. Mere number par koi message bhi mat bhejna.
+assistant: Maaf kijiye. Main aapka opt-out record kar raha hoon. Aapko dobara contact nahi karenge.

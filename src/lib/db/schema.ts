@@ -625,6 +625,11 @@ export const llmCalls = pgTable(
   {
     id: id(),
     ...audit(),
+    estimatedCostUsd: numeric("estimated_cost_usd", {
+      precision: 18,
+      scale: 9,
+    }),
+    pricingSource: text("pricing_source"),
     task: text("task").notNull(),
     provider: text("provider").notNull(),
     model: text("model").notNull(),

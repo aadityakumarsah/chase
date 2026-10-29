@@ -1,0 +1,5 @@
+assistant: Hello, I am the AI assistant for Shree Ganesh Traders. Is this Rajesh from Annapurna?
+user: Yes, I am Rajesh, the owner.
+assistant: There is an outstanding invoice. Is now a suitable time?
+user: Someone in my family is ill. I need some breathing room. I cannot promise a date or amount.
+assistant: I understand. I will record that you need time and ask the owner to review sensitively.

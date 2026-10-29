@@ -1,0 +1,5 @@
+assistant: Namaste, main Shree Ganesh Traders ka AI assistant hoon. Kya aap Suresh Sharma hain?
+user: Haan, main Suresh, Sharma General Store se.
+assistant: Aapke invoice par 12,500 रुपये बाकी hain. Aap kab pay kar sakte hain?
+user: Salary delay hai. Main 5 November 2026 ko 5,000 रुपये pakka dunga.
+assistant: 5 November ko 5,000 ka promise note kar liya. Thank you.

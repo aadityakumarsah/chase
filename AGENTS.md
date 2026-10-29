@@ -99,6 +99,9 @@ Use Node >=20.19 and `corepack enable`. `pnpm install` installs pinned lockfile 
 - pnpm seed / pnpm seed --reset — fictional portfolio seed / explicit local demo reset; pnpm bolna:sync — explicit Part 4 placeholder.
 - pnpm tunnel — prints macOS Cloudflare/ngrok instructions, never starts a tunnel.
 - pnpm format / format:check — formatting.
+- pnpm llm:ping / pnpm dossier:demo — explicit live LLM tier checks / demo dossier compilation; require configured credentials.
+- RUN_LLM_EVALS=1 pnpm eval:analysis — explicit live six-transcript evaluation; skipped without opt-in.
+- See docs/llm-layer.md for Part 3 routing, fallback, telemetry and verification limits.
 - pnpm exec tsx scripts/ensure-secrets.ts — explicit authorized bootstrap only; appends absent security keys, never rewrites existing lines.
 
 ## How to resume

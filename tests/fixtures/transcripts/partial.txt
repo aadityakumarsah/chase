@@ -1,0 +1,9 @@
+assistant: Hello, I am Shree Ganesh Traders' AI assistant. Am I speaking with Suresh Sharma?
+user: Yes, this is Suresh from Sharma General Store.
+assistant: Your confirmed balance is 12,500 rupees. What amount works today?
+user: I can pay 2,000 now. Send the link.
+assistant: The payment link has been sent.
+user: Done, please check.
+system: Payment tool confirmed a simulated payment of INR 2000 against INR 12500 outstanding; remaining INR 10500.
+assistant: The simulator confirms 2,000 received. Thank you. The remaining amount is 10,500.
+user: I cannot commit to a date for the rest yet.

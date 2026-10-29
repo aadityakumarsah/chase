@@ -1,0 +1,5 @@
+assistant: Namaste, main Shree Ganesh Traders ka AI assistant hoon. Kya aap Mahesh Gupta hain?
+user: Haan, Gupta Provision Mart ka owner main hoon.
+assistant: Ledger mein 48,000 रुपये बाकी hain.
+user: Cash में दे दिया था salesman ko. Receipt bhi hai. Dobara kyun maang rahe ho?
+assistant: Maaf kijiye. Main dispute record karke owner se receipt verify karwaunga. Verification tak collection hold rahega.

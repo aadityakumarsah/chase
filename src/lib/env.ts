@@ -82,6 +82,29 @@ export const envSchema = z.object({
   LLM_MODEL_DEEP: z.string().default("claude-opus-5-5"),
   LLM_FALLBACK_PROVIDER: provider.optional(),
   LLM_FALLBACK_MODEL: optional,
+  LLM_MODEL_FOR_DOSSIER: optional,
+  LLM_MODEL_FOR_CALL_ANALYSIS: optional,
+  LLM_MODEL_FOR_RATING_RATIONALE: optional,
+  LLM_MODEL_FOR_SUPERVISOR: optional,
+  LLM_MODEL_FOR_BRIEF: optional,
+  LLM_MODEL_FOR_PROMPT_PR: optional,
+  LLM_MODEL_FOR_PERSONA_SIM: optional,
+  LLM_MODEL_FOR_SIM_JUDGE: optional,
+  LLM_MODEL_FOR_CHAT_PROXY: optional,
+  LLM_MODEL_FOR_PING: optional,
+  LLM_PRICING_JSON: optional,
+  LLM_FALLBACK_API_KEY: optional,
+  LLM_FALLBACK_BASE_URL: httpUrl.optional(),
+  LLM_JSON_MODE: z.enum(["auto", "json_schema", "json_object"]).default("auto"),
+  LLM_FALLBACK_JSON_MODE: z
+    .enum(["auto", "json_schema", "json_object"])
+    .default("auto"),
+  OPENAI_API_KEY: optional,
+  OPENROUTER_API_KEY: optional,
+  GEMINI_API_KEY: optional,
+  GROQ_API_KEY: optional,
+  DEEPSEEK_API_KEY: optional,
+  TOGETHER_API_KEY: optional,
   // Messaging
   MESSAGING_PROVIDER: z
     .enum(["console", "meta_whatsapp", "twilio_whatsapp", "twilio_sms"])
@@ -155,17 +178,22 @@ export function configReport(
     });
     return { status: missing.length ? "missing" : "configured", missing };
   };
-  const llmKeys: (keyof Env)[] =
-    config.LLM_PROVIDER === "anthropic"
-      ? config.LLM_API_KEY
-        ? ["LLM_API_KEY"]
-        : ["ANTHROPIC_API_KEY"]
-      : [
-          "LLM_API_KEY",
-          ...(config.LLM_PROVIDER === "openai_compatible"
-            ? ["LLM_BASE_URL" as const]
-            : []),
-        ];
+  const providerKeyNames: Record<Env["LLM_PROVIDER"], keyof Env> = {
+    anthropic: "ANTHROPIC_API_KEY",
+    openai: "OPENAI_API_KEY",
+    openrouter: "OPENROUTER_API_KEY",
+    gemini: "GEMINI_API_KEY",
+    groq: "GROQ_API_KEY",
+    deepseek: "DEEPSEEK_API_KEY",
+    together: "TOGETHER_API_KEY",
+    openai_compatible: "LLM_API_KEY",
+  };
+  const llmKeys: (keyof Env)[] = [
+    config.LLM_API_KEY ? "LLM_API_KEY" : providerKeyNames[config.LLM_PROVIDER],
+    ...(config.LLM_PROVIDER === "openai_compatible"
+      ? ["LLM_BASE_URL" as const]
+      : []),
+  ];
   const messagingKeys: Record<Env["MESSAGING_PROVIDER"], (keyof Env)[]> = {
     console: [],
     meta_whatsapp: [
