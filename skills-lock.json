@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "skills": {
+    "add-provider": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "add-provider/SKILL.md",
+      "computedHash": "4353f10e2caf82a0ac957d715dd3f20eff9c3af2bc2eea5ef407d702ad6b0561"
+    },
+    "bolna-extraction-designer": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "bolna-extraction-designer/SKILL.md",
+      "computedHash": "30f7a86065e656da6fa6b15b5a69b351d46b0586a17d066905eb5587d241619f"
+    },
+    "bolna-graph-agents": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "bolna-graph-agents/SKILL.md",
+      "computedHash": "3e533f641b18a8343c7b197e10c3ac39e9b6133fd9f2075d9865fd09c099a169"
+    },
+    "create-agent": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "create-agent/SKILL.md",
+      "computedHash": "89f398a41b337a1362943a8669f62c6e07c23d57f2962c4f0125874880d3907a"
+    },
+    "create-batch": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "create-batch/SKILL.md",
+      "computedHash": "1a62edfc7a6490ca45e99621ffb9681dee5b87160dc48658e0db505bde166c2a"
+    },
+    "create-disposition": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "create-disposition/SKILL.md",
+      "computedHash": "69988bc852f72a27bfb3cfb79e3652080214253a096289e72d507aeb25421c8a"
+    },
+    "create-knowledgebase": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "create-knowledgebase/SKILL.md",
+      "computedHash": "cd56a1810863553ace8d6266b0462bc9f02aca410ba7ffbd52da0336fc87dda3"
+    },
+    "debug-bolna-calls": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "debug-bolna-calls/SKILL.md",
+      "computedHash": "2abccc3104fb0b752846edc75c6a052872f3d3eb407940d98a9ebfa7bc7f6f9c"
+    },
+    "get-executions": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "get-executions/SKILL.md",
+      "computedHash": "0897e83566d8d31cbfe06d4e22fa219bee4dca340c8fa56fd319b631f098f1ea"
+    },
+    "make-call": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "make-call/SKILL.md",
+      "computedHash": "dc70f8db6c405775a0e2bd28b1174ade923e42a69b385168c8d2abf8a5e8e3d6"
+    },
+    "manage-agents": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "manage-agents/SKILL.md",
+      "computedHash": "55e560d568360e62b9c71be2752f4ec127ee5f62af79bd5cee0fdc6eb57fde75"
+    },
+    "manage-phone-numbers": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "manage-phone-numbers/SKILL.md",
+      "computedHash": "6af4231dc0df3cbb8c1333df9eed5ec4e13a90fa42c78289b240321a6baf47f9"
+    },
+    "manage-subaccounts": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "manage-subaccounts/SKILL.md",
+      "computedHash": "83b50b82171a1ea7f0f6cac881f04665079d113cb79519630c389556a7f39de6"
+    },
+    "manage-violations": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "manage-violations/SKILL.md",
+      "computedHash": "b870d4006b0947f2bd00dc1dae9dff29d659f6e1d45e18e0726d83c70546fb3a"
+    },
+    "prompt-writing": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "prompt-writing/SKILL.md",
+      "computedHash": "cbbe86ed5b2dcef09dff847062a76eca879a38e4105d24542ce4b65855b30b2b"
+    },
+    "setup-api-key": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "setup-api-key/SKILL.md",
+      "computedHash": "5802c5d24c31ff3a4052780fbc4c2f2b8b63a07904d99152e8eb211d04ec8ffd"
+    },
+    "setup-inbound": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "setup-inbound/SKILL.md",
+      "computedHash": "3c82f4305cc665389170dee34abae06be5d14e06b9782bfac6459ff5a6564ed2"
+    },
+    "setup-sip-trunk": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "setup-sip-trunk/SKILL.md",
+      "computedHash": "480aa45a13cf6cc7a225b8edb240be31fe890120a74f8061c5f07c0429b90fa4"
+    },
+    "setup-tools": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "setup-tools/SKILL.md",
+      "computedHash": "40188dfe07154fb795b1867d45bb0d77806c8f79eb6af49d9980566483d19838"
+    },
+    "setup-webhook": {
+      "source": "bolna-ai/skills",
+      "sourceType": "github",
+      "skillPath": "setup-webhook/SKILL.md",
+      "computedHash": "d289a454ffd0ac0e10d01283392891fae56e53a3ec9016f7fac5193b85cebf47"
+    }
+  }
+}

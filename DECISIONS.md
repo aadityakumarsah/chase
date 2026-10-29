@@ -1,0 +1,29 @@
+# Decisions
+
+- 2026-10-29 — Use one Next.js 16.4.3 App Router application, replacing the older FastAPI sketch; the Part 1 architecture is authoritative.
+- 2026-10-29 — Preserve the original AGENTS.MD content in docs/original-product-notes.md and normalize the brain file to AGENTS.md for standard discovery.
+- 2026-10-29 — Use src/proxy.ts because installed Next.js is 16+ and the official interceptor documentation specifies Proxy.
+- 2026-10-29 — Preserve every original .env byte; append random 256-bit values only for the five explicitly authorized empty security keys.
+- 2026-10-29 — Canonical nonempty environment names win over aliases; support Bolna legacy key names, META_WA_ACCESS_TOKEN, and TWILIO_PHONE_NUMBER without rewriting the environment.
+- 2026-10-29 — Treat blank environment values as unset; lazy validation allows setup, builds and unit tests without live integration credentials. Report invalid key names only, since Zod messages can echo inputs.
+- 2026-10-29 — Fail closed when DEMO_MODE has an empty allowlist; no recipient, including the owner, is implicitly allowed.
+- 2026-10-29 — Spoken amount helpers take explicit display rupees to honor spokenAmountHi(12500); domain values and formatINR take integer paise. Callers must convert via paiseToRupees.
+- 2026-10-29 — Time windows are start-inclusive/end-exclusive, so no call starts at the closing boundary; Bolna timestamps are clamped to two minutes ahead and rounded up before later compliance checks.
+- 2026-10-29 — Use expiring HMAC-signed admin cookies, HttpOnly, SameSite=Lax, and Secure on HTTPS; a cookie name or literal passcode is never sufficient authentication.
+- 2026-10-29 — Login uses a same-origin POST and a process-local global attempt bucket; shared durable throttling is required before multi-instance production use.
+- 2026-10-29 — Public health probes test the database when configured but report Bolna configuration only; paid/remote provider checks belong in the explicit smoke script.
+- 2026-10-29 — Health ok denotes app liveness (and configured DB reachability), not complete demo readiness; missing optional setup is explicitly returned.
+- 2026-10-29 — GET /v2/agent/all is confirmed by official docs and live API; live /user/me concurrency is an object, not just a number.
+- 2026-10-29 — Retry read-only Bolna GETs on 429/5xx with bounded attempts, jitter and provider delay hints; do not add retries to future non-idempotent calls without an idempotency strategy.
+- 2026-10-29 — BolnaError retains a redacted body to satisfy diagnostics without retaining echoed credentials; log neither headers nor raw response bodies.
+- 2026-10-29 — Leave requested model defaults unchanged until account/provider validation; missing LLM credentials prevent verification and are not a reason to invent a substitute.
+- 2026-10-29 — Bolna's current docs retire legacy extraction fields; implement the new Extractions format in the post-call part after checking the live schema.
+- 2026-10-29 — Protect events from UPDATE/DELETE/TRUNCATE with Postgres triggers in the initial migration; production roles must not own or disable those triggers.
+- 2026-10-29 — Build the UI from neutral shadcn Radix components and local system fonts; remove the generated Google font dependency so builds need no font-network access.
+- 2026-10-29 — Current shadcn CLI removed --base-color; initialize with its supported radix preset and verify components.json baseColor is neutral.
+- 2026-10-29 — Explicitly permit esbuild, unrs-resolver and sharp installation scripts in pnpm-workspace.yaml; pnpm 12 otherwise rejects necessary native build scripts.
+- 2026-10-29 — Store console messages as clearly simulated audit events rather than pretending a WhatsApp delivery occurred; a missing database fails visibly.
+- 2026-10-29 — Keep payment links unavailable until a later part can resolve and validate real payment tokens; the Part 1 page accepts no money.
+- 2026-10-29 — Pin TypeScript to supported 6.x because the current typescript-eslint parser explicitly rejects TypeScript 7; keep strict type checking enabled.
+- 2026-10-29 — Pin ESLint to 9.x to satisfy the current Next.js import, React and accessibility plugin peer ranges.
+- 2026-10-29 — Disable Next.js agentRules auto-generation to keep the curated AGENTS.md stable; explicitly point maintainers to version-matched bundled Next.js docs instead.

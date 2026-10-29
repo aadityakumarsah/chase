@@ -1,0 +1,7 @@
+node_modules
+.next
+pnpm-lock.yaml
+.env*
+.agents
+.claude
+drizzle/meta
