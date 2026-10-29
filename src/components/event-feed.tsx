@@ -7,7 +7,7 @@ const feedSchema = z.object({
   status: z.enum(["database_missing", "ready"]),
   events: z.array(
     z.object({
-      id: z.uuid(),
+      id: z.string().regex(/^\d+$/),
       type: z.string(),
       createdAt: z.iso.datetime({ offset: true }),
       payload: z.record(z.string(), z.unknown()),

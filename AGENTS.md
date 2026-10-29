@@ -96,11 +96,11 @@ Use Node >=20.19 and `corepack enable`. `pnpm install` installs pinned lockfile 
 - pnpm typecheck / lint / test — required checks; tests use fixtures and make no live calls.
 - pnpm smoke — status/missing names, optional DB ping, Bolna name/wallet/concurrency and agent names/IDs, optional 5-token LLM ping; never secrets.
 - pnpm db:generate / db:migrate / db:studio — schema migrations and local database UI.
-- pnpm seed — explicit Part 2 placeholder; pnpm bolna:sync — explicit Part 4 placeholder.
+- pnpm seed / pnpm seed --reset — fictional portfolio seed / explicit local demo reset; pnpm bolna:sync — explicit Part 4 placeholder.
 - pnpm tunnel — prints macOS Cloudflare/ngrok instructions, never starts a tunnel.
 - pnpm format / format:check — formatting.
 - pnpm exec tsx scripts/ensure-secrets.ts — explicit authorized bootstrap only; appends absent security keys, never rewrites existing lines.
 
 ## How to resume
 
-Read AGENTS.md, PROGRESS.md, DECISIONS.md and docs/bolna-notes.md. Run git status and inspect env key names only. Run pnpm smoke to see safe missing-key diagnostics. Read the user's next Part brief before expanding scope. Run typecheck/lint/test after relevant changes. Do not replace .env, generate fake data that looks real, create duplicate migrations, regenerate credentials, or call recipients implicitly. Preserve the seed and bolna:sync placeholders until their assigned parts. Keep PROGRESS.md accurate about implemented vs planned functionality and verification limits.
+Read AGENTS.md, PROGRESS.md, DECISIONS.md and docs/bolna-notes.md. Run git status and inspect env key names only. Run pnpm smoke to see safe missing-key diagnostics. Read the user's next Part brief before expanding scope. Run typecheck/lint/test after relevant changes. Do not replace .env, generate fake data that looks real, create duplicate migrations, regenerate credentials, or call recipients implicitly. Preserve the bolna:sync placeholder until Part 4. Part 2 seed is implemented; use --reset only for an explicit disposable local demo reset. Keep PROGRESS.md accurate about implemented vs planned functionality and verification limits.

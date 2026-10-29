@@ -7,6 +7,8 @@ export function assertDialAllowed(
   env: Pick<Env, "DEMO_MODE" | "CALL_ALLOWLIST">,
 ): void {
   e164Schema.parse(phone);
+  if (/^\+91900000\d{4}$/.test(phone))
+    throw new Error("Call blocked: reserved fictional seed number");
   if (env.DEMO_MODE && !env.CALL_ALLOWLIST.includes(phone))
     throw new Error("Demo call blocked: recipient is not in CALL_ALLOWLIST");
 }

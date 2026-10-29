@@ -1,0 +1,11 @@
+shop_name,contact_name,phone,language,invoice_no,invoice_date,due_date,amount_rupees,paid_rupees
+Green Basket Grocers,Asha Menon,9000000015,en,CSV-2026-001,01-09-2026,01-10-2026,"8,400.00",0
+CarePlus Pharmacy,Arjun Nair,+919000000016,Hinglish,CSV-2026-002,02-09-2026,02-10-2026,15000,5000
+Urban Chai & Snacks,Farhan Khan,09000000017,en,CSV-2026-003,03-09-2026,03-10-2026,"32,000.00",2000
+Metro Tools & Hardware,Kevin Dsouza,+91 90000 00018,en,CSV-2026-004,04-09-2026,04-10-2026,"62,000",12000
+Fresh Corner Market,Ritu Malhotra,9000000019,en,CSV-2026-005,05-09-2026,05-10-2026,"98,000",18000
+Wellness Medical Shop,Sneha Thomas,9000000020,en,CSV-2026-006,06-09-2026,06-10-2026,7800,0
+The Lunch Box,Joseph Fernandes,9000000021,en,CSV-2026-007,07-09-2026,07-10-2026,14000,4000
+Deshmukh Kirana,Prakash Deshmukh,9000000022,mr,CSV-2026-008,08-09-2026,08-10-2026,21000,1000
+Patil Hardware,Vaishali Patil,9000000023,mr,CSV-2026-009,09-09-2026,09-10-2026,"46,500",6500
+Mauli Upahar Gruha,Ganesh Jadhav,9000000024,mr,CSV-2026-010,10-09-2026,10-10-2026,11000,0

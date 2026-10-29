@@ -1,29 +1,30 @@
 # Chase progress
 
-Submission target: 31 October 2026. Parts after Part 1 are a working sequence, subject to the user's next briefs.
+Submission target: 31 October 2026. Later parts follow the user's authoritative briefs.
 
 - [x] Part 1 — Scaffold, validated environment, utilities, Bolna read client, auth, health, tooling, project brain.
-- [ ] Part 2 — Ledger schema, debtor/invoice import, demo seed and append-only domain events.
-- [ ] Part 3 — Deterministic Chase Rating, queue, dossier features and compliance scheduling.
-- [ ] Part 4 — Bolna agent sync, validated speech providers/voices, calling and live tools.
-- [ ] Part 5 — UPI/Razorpay payments, messaging, promises, callbacks, disputes and opt-outs.
-- [ ] Part 6 — Completed-call webhook ingestion, typed analysis and dossier updates.
-- [ ] Part 7 — Live collections dashboard and operational review.
-- [ ] Part 8 — Daily management brief and interactive owner call.
-- [ ] Part 9 — Evidence-backed Prompt PRs, simulator and protected compliance checks.
-- [ ] Part 10 — End-to-end demo, deployment, rehearsal and submission assets.
+- [x] Part 2 — Full product schema, fictional portfolio/history seed, CSV import, portfolio queries and deterministic Chase Rating.
+- [ ] Part 3 — Next user brief; queue and compliance scheduling remain unimplemented.
+- [ ] Parts 4–10 — Calling/tools, payment/messaging delivery, completed-call analysis, dashboard, owner briefs, Prompt PRs and final demo, as assigned by later briefs.
 
-## Resume state
+## Resume state — 29 October 2026
 
-Part 1 is implemented and verified. No outbound calls have been implemented or placed.
+Part 2 is implemented. No outbound calls or real messages/payments were made. The local database is left with the fresh 24-debtor fictional seed.
 
-- Typecheck, lint and all 25 tests pass.
-- Production build passes; Next.js 16.4.3 uses src/proxy.ts.
-- Development HTTP verification: 11 checks pass for login, health JSON, protected routes, forged-cookie rejection, same-origin enforcement and authenticated dashboard/feed.
-- Live Bolna smoke succeeds with account name, wallet and concurrency; the agent list is empty.
-- DATABASE_URL and LLM credentials are not configured, so DB connectivity/migration execution and a live LLM ping remain unverified. A migration is generated and committed, not applied.
-- Five empty security entries received appended random values: CHASE_TOOL_SECRET, CHASE_WEBHOOK_SECRET, CHASE_PROXY_KEY, CRON_SECRET, ADMIN_PASSCODE. All original .env lines remain preserved and ignored by Git.
-- See docs/config-status.md for missing canonical names. Provider status is configuration, not a claim of verified messaging/payment delivery.
-- Installed 20 Bolna skills for Claude Code; optional MCP setup command is documented but not executed.
+- Twenty tables with bigint paise, UTC timestamps, indexed foreign keys, database-maintained updated_at, per-business invoice uniqueness, and append-only audit events. Migration 0001 applied to the configured local Postgres database; generating again reports no schema drift.
+- Seed includes 14 Hindi, 7 English/Hinglish and 3 Marathi contacts, simulated histories, dossiers and inactive Part 4 prompt placeholders. Normal seed is idempotent. Explicit --reset works twice consecutively; it is restricted to a local demo database without non-seed businesses/calls/prompts.
+- Ranked output contains 24 debtors: Sharma General Store is fifth at 77/A; scored range 11–94; dispute, opt-out and wrong number are X. Probability and raw formula are preserved; an explicit global monotonic display curve reconciles the requested demo score with the supplied formula (see DECISIONS.md).
+- CSV CLI and authenticated, same-origin POST /api/import/csv accept the ten-row sample with zero rejections. Re-import updates all ten without duplicates. Money parsing is decimal-exact, rows are transactional, and invoice ownership cannot change. All business ratings refresh after import because the maximum balance can change.
+- Typecheck, lint, production build and 53 unit tests pass. scripts/verify-part2.ts confirms all 24 DB-derived feature sets match fixtures, rating history is retained, unchanged scores emit no rating.changed, and UPDATE/DELETE/TRUNCATE on events fail.
+- Safe smoke: local database and read-only Bolna API reachable; agent list empty. Anthropic credentials remain missing, so live LLM verification is unavailable. Owner/demo phones, allowlist, payment configuration and agent/voice IDs remain incomplete. No .env changes were made during this continuation.
+- Hardship's 72-hour interval is returned as a routing constraint; actual dispatch/attempt enforcement awaits the compliance scheduler. Active-promise waiting and exclusions are ranking behavior, not a claim of complete calling safeguards.
+- Payment page remains inert. Prompt placeholders are inactive. bolna:sync remains a Part 4 placeholder.
 
-Next: privately configure DATABASE_URL and the chosen LLM credential, then provide the Part 2 brief. The current login is at http://localhost:3000/login; use ADMIN_PASSCODE from the local environment. The Part 2 seed and Part 4 agent-sync commands remain safe placeholders.
+## Commands added in Part 2
+
+- pnpm seed / pnpm seed --reset — create or explicitly reset the fictional local demo.
+- pnpm rating:recompute — append rating history and print a ranked table.
+- pnpm import:csv samples/receivables-sample.csv [business UUID] — import or update sample invoices.
+- pnpm exec tsx scripts/verify-part2.ts — integration assertions against a freshly seeded local demo; appends one unchanged rating-history row.
+
+API import accepts text/csv or multipart/form-data with a file field, an authenticated admin cookie and matching Origin. Optional businessId query parameter is required when multiple businesses exist. Limits: 2 MiB and 1,000 rows. The sample uses fictional reserved phones.
