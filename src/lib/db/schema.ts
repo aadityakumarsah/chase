@@ -445,6 +445,7 @@ export const callTurns = pgTable(
     idx: integer("idx").notNull(),
     speaker: callSpeaker("speaker").notNull(),
     text: text("text").notNull(),
+    timeToFirstTokenMs: integer("time_to_first_token_ms"),
     at: ts("at").defaultNow().notNull(),
   },
   (t) => [
@@ -452,6 +453,16 @@ export const callTurns = pgTable(
     check("turn_idx_nonnegative", sql`${t.idx} >= 0`),
   ],
 );
+
+export const proxyCallStates = pgTable("proxy_call_states", {
+  callId: uuid("call_id")
+    .primaryKey()
+    .references(() => calls.id),
+  ...audit(),
+  pendingSupervisorNote: text("pending_supervisor_note"),
+  slowTurnStreak: integer("slow_turn_streak").default(0).notNull(),
+  supervisorDisabled: boolean("supervisor_disabled").default(false).notNull(),
+});
 export const toolInvocations = pgTable(
   "tool_invocations",
   {
@@ -611,6 +622,29 @@ export const promptPrs = pgTable(
     index("prompt_prs_base_idx").on(t.baseVersionId),
     index("prompt_prs_agent_status_idx").on(t.agentKey, t.status),
     check("prompt_pr_confidence", sql`${t.confidence} BETWEEN 0 AND 1`),
+  ],
+);
+export const simRuns = pgTable(
+  "sim_runs",
+  {
+    id: id(),
+    ...audit(),
+    promptVersionId: uuid("prompt_version_id").references(
+      () => promptVersions.id,
+    ),
+    promptHash: text("prompt_hash").notNull(),
+    personas: text("personas").array().notNull(),
+    report: jsonb("report").notNull(),
+    passed: boolean("passed").notNull(),
+    model: text("model").notNull(),
+    completedAt: ts("completed_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("sim_runs_prompt_completed_idx").on(
+      t.promptVersionId,
+      t.completedAt.desc(),
+    ),
+    index("sim_runs_completed_idx").on(t.completedAt.desc()),
   ],
 );
 export const briefs = pgTable(

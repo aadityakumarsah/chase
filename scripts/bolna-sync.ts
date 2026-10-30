@@ -21,6 +21,8 @@ async function main() {
   const { assertAgentRoundTrip } = await import("../src/lib/bolna/verify");
   const { ensureActivePrompt } = await import("../src/lib/prompts");
   const { emitEvent } = await import("../src/lib/events");
+  const { ensureProxyModelRegistered } =
+    await import("../src/lib/bolna/sync-configured");
   const { maskPhone } = await import("../src/lib/phone");
   try {
     const env = { ...getEnv() };
@@ -92,6 +94,7 @@ async function main() {
         "BOLNA_FROM_NUMBER is unset: /call will omit from_phone_number and use the account default.",
       );
     const agents = await client.listAgents();
+    await ensureProxyModelRegistered(client, env);
     for (const key of ["collections", "brief"] as const) {
       const prompt = await ensureActivePrompt(key);
       const payload =

@@ -96,14 +96,12 @@ export async function POST(request: NextRequest) {
               ),
             );
           if (!old)
-            await tx
-              .insert(optOuts)
-              .values({
-                debtorId: debtor.id,
-                scope: "all",
-                reason: "WhatsApp STOP",
-                source: "whatsapp_stop",
-              });
+            await tx.insert(optOuts).values({
+              debtorId: debtor.id,
+              scope: "all",
+              reason: "WhatsApp STOP",
+              source: "whatsapp_stop",
+            });
           await tx
             .update(debtors)
             .set({ status: "do_not_contact" })

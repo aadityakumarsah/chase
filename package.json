@@ -34,6 +34,9 @@
     "promises:sweep": "tsx scripts/promises-sweep.ts",
     "brief:run": "tsx scripts/brief-run.ts",
     "verify:part8": "tsx scripts/verify-part8.ts",
+    "sim": "tsx scripts/sim.ts",
+    "prompt-pr:generate": "tsx scripts/prompt-pr-generate.ts",
+    "verify:part9:proxy": "tsx scripts/verify-part9-proxy.ts",
     "verify:part6": "tsx scripts/verify-part6.ts"
   },
   "dependencies": {

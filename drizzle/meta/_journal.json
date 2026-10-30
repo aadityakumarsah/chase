@@ -57,6 +57,20 @@
       "when": 1793386303370,
       "tag": "0007_low_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793392554817,
+      "tag": "0008_swift_darwin",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793393027237,
+      "tag": "0009_melodic_captain_universe",
+      "breakpoints": true
     }
   ]
 }

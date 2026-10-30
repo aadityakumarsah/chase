@@ -41,7 +41,7 @@ export const toolSchemas = {
 export type ToolName = keyof typeof toolSchemas;
 export const TOOL_NAMES = Object.keys(toolSchemas) as ToolName[];
 export const TRANSFER_TOOL_NAME = "transfer_to_owner";
-const descriptions: Record<ToolName, string> = {
+export const toolDescriptions: Record<ToolName, string> = {
   send_payment_link:
     "After identity confirmation and agreement to pay now, send a link for the agreed whole-rupee amount.",
   record_promise_to_pay:
@@ -95,7 +95,7 @@ export function buildApiTools(input: {
     );
     tools.push({
       name,
-      description: descriptions[name],
+      description: toolDescriptions[name],
       pre_call_message: preCall[name] ?? "ठीक है, एक second।",
       parameters,
       key: "custom_task",

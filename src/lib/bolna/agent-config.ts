@@ -29,6 +29,9 @@ export function requirePublicBaseUrl(value: string) {
 }
 function build(env: Env, prompt: string, brief: boolean) {
   const baseUrl = requirePublicBaseUrl(env.APP_BASE_URL);
+  const proxy = !brief && env.CHASE_LLM_MODE === "proxy";
+  if (proxy && !env.CHASE_PROXY_KEY)
+    throw new Error("CHASE_PROXY_KEY is required in proxy mode");
   // Bolna's LiteLLM router needs an explicit provider for newer Claude IDs.
   const modernClaude =
     env.BOLNA_LLM_PROVIDER === "anthropic" &&
@@ -71,11 +74,17 @@ function build(env: Env, prompt: string, brief: boolean) {
                   : "simple_llm_agent",
               agent_flow_type: "streaming",
               llm_config: {
-                provider: env.BOLNA_LLM_PROVIDER,
-                model,
+                ...(proxy
+                  ? {
+                      provider: "custom",
+                      model: "chase-claude",
+                      base_url: `${baseUrl}/api/llm/v1`,
+                      family: "openai",
+                    }
+                  : { provider: env.BOLNA_LLM_PROVIDER, model }),
                 max_tokens: brief ? 200 : 150,
-                ...(modernClaude ? {} : { temperature: 0.3 }),
-                ...(!brief && env.BOLNA_AGENT_MODE === "graph"
+                ...(modernClaude && !proxy ? {} : { temperature: 0.3 }),
+                ...(!brief && !proxy && env.BOLNA_AGENT_MODE === "graph"
                   ? graphConfig(model, renderPrompt(prompt))
                   : {}),
               },

@@ -1,0 +1,45 @@
+{
+  "model": "chase-claude",
+  "stream": true,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are Chase. Call reference: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    { "role": "user", "content": "Send a link for 2000" },
+    {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [
+        {
+          "id": "toolu_123",
+          "type": "function",
+          "function": {
+            "name": "send_payment_link",
+            "arguments": "{\"amount_rupees\":2000}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_123",
+      "content": "{\"ok\":true,\"say\":\"Link sent\"}"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "send_payment_link",
+        "description": "Send the agreed payment link",
+        "parameters": {
+          "type": "object",
+          "properties": { "amount_rupees": { "type": "integer" } },
+          "required": ["amount_rupees"],
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

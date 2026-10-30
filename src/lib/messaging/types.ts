@@ -9,9 +9,7 @@ export const messageSchema = z.object({
 });
 export type Message = z.infer<typeof messageSchema>;
 export interface MessagingProvider {
-  send(
-    message: Message,
-  ): Promise<{
+  send(message: Message): Promise<{
     providerMessageId: string;
     status: "sent" | "queued" | "failed";
   }>;

@@ -39,7 +39,11 @@ const eventDetail = (event: DashboardEvent) => {
   if (Array.isArray(payload.rules)) return payload.rules.join(", ");
   if (typeof payload.channel === "string")
     return `${sentence(payload.channel)}${payload.simulated === true ? " · demo console" : ""}`;
-  if (payload.args && typeof payload.args === "object" && !Array.isArray(payload.args)) {
+  if (
+    payload.args &&
+    typeof payload.args === "object" &&
+    !Array.isArray(payload.args)
+  ) {
     const args = Object.entries(payload.args as Record<string, unknown>)
       .filter(([key]) => key !== "account_id")
       .slice(0, 3)
