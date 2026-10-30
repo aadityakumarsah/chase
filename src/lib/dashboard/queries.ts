@@ -256,9 +256,11 @@ async function liveCall(): Promise<LiveCall | null> {
       call: calls,
       shopName: debtors.shopName,
       contactName: debtors.contactName,
+      ownerName: businesses.ownerName,
     })
     .from(calls)
-    .innerJoin(debtors, eq(debtors.id, calls.debtorId))
+    .innerJoin(businesses, eq(businesses.id, calls.businessId))
+    .leftJoin(debtors, eq(debtors.id, calls.debtorId))
     .orderBy(
       dsql`case when ${calls.status} in ('queued','initiated','ringing','in-progress','in_progress','call-disconnected') then 0 else 1 end`,
       desc(calls.createdAt),
@@ -270,7 +272,11 @@ async function liveCall(): Promise<LiveCall | null> {
     db
       .select()
       .from(messages)
-      .where(eq(messages.debtorId, row.call.debtorId))
+      .where(
+        row.call.debtorId
+          ? eq(messages.debtorId, row.call.debtorId)
+          : eq(messages.callId, row.call.id),
+      )
       .orderBy(desc(messages.createdAt))
       .limit(20),
     db.query.paymentLinks.findMany({
@@ -283,8 +289,8 @@ async function liveCall(): Promise<LiveCall | null> {
   return {
     id: row.call.id,
     debtorId: row.call.debtorId,
-    shopName: row.shopName,
-    contactName: row.contactName,
+    shopName: row.shopName ?? "Daily management brief",
+    contactName: row.contactName ?? row.ownerName,
     status: row.call.status,
     connected: row.call.connected,
     startedAt: row.call.startedAt?.toISOString() ?? null,
@@ -575,7 +581,7 @@ export async function callDetail(id: string) {
   const [row] = await db
     .select({ call: calls, debtor: debtors, business: businesses })
     .from(calls)
-    .innerJoin(debtors, eq(debtors.id, calls.debtorId))
+    .leftJoin(debtors, eq(debtors.id, calls.debtorId))
     .innerJoin(businesses, eq(businesses.id, calls.businessId))
     .where(eq(calls.id, id));
   if (!row) return null;
@@ -600,9 +606,9 @@ export async function callDetail(id: string) {
       processingStartedAt: row.call.processingStartedAt?.toISOString() ?? null,
     },
     debtor: {
-      id: row.debtor.id,
-      shopName: row.debtor.shopName,
-      contactName: row.debtor.contactName,
+      id: row.debtor?.id ?? null,
+      shopName: row.debtor?.shopName ?? "Daily management brief",
+      contactName: row.debtor?.contactName ?? row.business.ownerName,
     },
     business: { id: row.business.id, name: row.business.name },
     tools: tools.map((tool) => ({

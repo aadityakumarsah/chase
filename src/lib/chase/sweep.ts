@@ -1,4 +1,4 @@
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, lt, lte, sql } from "drizzle-orm";
 import { recomputeRating } from "@/lib/chase/recompute";
 import { getDb } from "@/lib/db";
 import { payments, promises } from "@/lib/db/schema";
@@ -17,7 +17,10 @@ export function promiseResolution(paidPaise: bigint, promisedPaise: bigint) {
       : ("broken" as const);
 }
 
-export async function sweepPromises(now = new Date()) {
+export async function sweepPromises(
+  now = new Date(),
+  options: { includeToday?: boolean } = {},
+) {
   const db = getDb();
   const pending = await db
     .select()
@@ -25,7 +28,9 @@ export async function sweepPromises(now = new Date()) {
     .where(
       and(
         eq(promises.status, "pending"),
-        lt(promises.promisedFor, istDay(now)),
+        options.includeToday
+          ? lte(promises.promisedFor, istDay(now))
+          : lt(promises.promisedFor, istDay(now)),
       ),
     );
   const affected = new Set<string>();

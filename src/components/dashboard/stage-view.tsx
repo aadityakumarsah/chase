@@ -58,8 +58,20 @@ export function StageView() {
           ? toast.success("Demo payment recorded")
           : toast.error("Payment simulation unavailable");
       }
-      if (event.key === "3")
-        return toast.info("Owner brief activates in Part 8");
+      if (event.key === "3") {
+        const response = await fetch("/api/brief/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: "today",
+            deliver: ["dashboard", "call"],
+          }),
+        });
+        const body = (await response.json()) as { error?: string };
+        return response.ok
+          ? toast.success("Owner brief call queued")
+          : toast.error(body.error ?? "Owner brief call unavailable");
+      }
       if (
         event.key.toLowerCase() === "r" &&
         window.confirm("Reset the fictional demo portfolio?")
@@ -156,7 +168,9 @@ export function StageView() {
                 {inr(data.kpis.collectedTodayPaise)}
               </motion.p>
               {Number(data.kpis.simulatedCollectedTodayPaise) > 0 && (
-                <p className="mt-1 text-[20px] text-amber-500">Demo simulation included</p>
+                <p className="mt-1 text-[20px] text-amber-500">
+                  Demo simulation included
+                </p>
               )}
             </div>
             <div className="glass-panel rounded-2xl border p-5">

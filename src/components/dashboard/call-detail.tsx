@@ -89,7 +89,7 @@ export function CallDetail({ id }: { id: string }) {
           <Button
             variant="outline"
             onClick={() => void rerun()}
-            disabled={busy || !call.transcript}
+            disabled={busy || !call.transcript || call.purpose !== "collection"}
           >
             <RefreshCw size={15} className={busy ? "animate-spin" : ""} />{" "}
             Re-run analysis

@@ -1,11 +1,4 @@
-import { ComingSoon } from "@/components/dashboard/coming-soon";
+import { BriefPage as BriefDashboard } from "@/components/dashboard/brief-page";
 export default function BriefPage() {
-  return (
-    <ComingSoon
-      eyebrow="Management intelligence"
-      title="Daily brief"
-      description="Promised versus collected cash, broken promises, disputes, compliance and owner follow-up."
-      part={8}
-    />
-  );
+  return <BriefDashboard />;
 }

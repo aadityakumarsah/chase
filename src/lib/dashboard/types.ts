@@ -34,7 +34,7 @@ export type DashboardEvent = {
 
 export type LiveCall = {
   id: string;
-  debtorId: string;
+  debtorId: string | null;
   shopName: string;
   contactName: string;
   status: string;

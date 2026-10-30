@@ -32,6 +32,8 @@
     "call:test": "tsx scripts/test-call.ts",
     "calls:poll": "tsx scripts/calls-poll.ts",
     "promises:sweep": "tsx scripts/promises-sweep.ts",
+    "brief:run": "tsx scripts/brief-run.ts",
+    "verify:part8": "tsx scripts/verify-part8.ts",
     "verify:part6": "tsx scripts/verify-part6.ts"
   },
   "dependencies": {

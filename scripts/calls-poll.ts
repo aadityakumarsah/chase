@@ -25,7 +25,11 @@ async function main() {
       const result = await ingestExecution(
         await getBolnaClient().getExecution(call.bolnaExecutionId!),
       );
-      if ("terminal" in result && result.terminal) {
+      if (
+        call.purpose === "collection" &&
+        "terminal" in result &&
+        result.terminal
+      ) {
         await processCall(call.id);
         terminal++;
       }

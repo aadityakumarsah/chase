@@ -1,16 +1,26 @@
 import { and, eq, notInArray } from "drizzle-orm";
 import { getBolnaClient, BolnaError } from "@/lib/bolna/client";
+import { buildBriefFacts } from "@/lib/brief/scripts";
+import { BriefMetricsSchema, BriefNarrativeSchema } from "@/lib/brief/types";
 import { recomputeRating } from "@/lib/chase/recompute";
 import { evaluateDebtorContact } from "@/lib/compliance/contact";
+import { evaluateContact } from "@/lib/compliance/gate";
 import { getDb } from "@/lib/db";
-import { calls, complianceEvents, debtors, invoices } from "@/lib/db/schema";
+import {
+  briefs,
+  businesses,
+  calls,
+  complianceEvents,
+  debtors,
+  invoices,
+} from "@/lib/db/schema";
 import { compileDossier, toCallVariables } from "@/lib/dossier";
 import { getEnv } from "@/lib/env";
 import { emitEvent } from "@/lib/events";
 import { enqueueMessage, deliverMessage } from "@/lib/messaging";
 import { maskPhone } from "@/lib/phone";
 import { loadCallContext } from "./context";
-import { syncedCollectionsPrompt } from "./prompt";
+import { syncedBriefPrompt, syncedCollectionsPrompt } from "./prompt";
 
 export type CollectionCallSource = "manual" | "campaign" | "callback";
 
@@ -167,8 +177,162 @@ export async function startCollectionCall(
   }
 }
 
-/** Part 8 supplies owner-brief content and activates this path. */
-export async function startOwnerBriefCall(briefId: string): Promise<never> {
-  void briefId;
-  throw new Error("Owner brief dialing is implemented in Part 8");
+export async function startOwnerBriefCall(briefId: string) {
+  const env = getEnv();
+  if (!env.OWNER_PHONE) throw new Error("OWNER_PHONE is not configured");
+  if (!env.BOLNA_BRIEF_AGENT_ID)
+    throw new Error("BOLNA_BRIEF_AGENT_ID is not configured");
+  const [record] = await getDb()
+    .select({ brief: briefs, business: businesses })
+    .from(briefs)
+    .innerJoin(businesses, eq(businesses.id, briefs.businessId))
+    .where(eq(briefs.id, briefId));
+  if (!record) throw new Error("Brief not found");
+  if (record.brief.callId)
+    return { status: "already_started" as const, callId: record.brief.callId };
+
+  const decision = evaluateContact({
+    purpose: "owner_brief",
+    debtor: { status: "active", firstContactDisclosedAt: new Date() },
+    business: record.business,
+    now: new Date(),
+    toNumber: env.OWNER_PHONE,
+    attemptsToday: 0,
+    attemptsThisWeek: 0,
+    lastAttemptAt: null,
+    optedOut: false,
+    disputeOpen: false,
+    hardship: false,
+    activePromise: null,
+    demoMode: env.DEMO_MODE,
+    allowlist: env.CALL_ALLOWLIST,
+    demoOverride: false,
+  });
+  if (!decision.allowed) {
+    await getDb()
+      .insert(complianceEvents)
+      .values({
+        kind: "gate_blocked",
+        rule: decision.rules
+          .filter((rule) => !rule.passed)
+          .map((rule) => rule.id)
+          .join(","),
+        detail: {
+          businessId: record.business.id,
+          purpose: "owner_brief",
+          rules: decision.rules,
+        },
+      });
+    await emitEvent("gate.blocked", {
+      payload: {
+        purpose: "owner_brief",
+        rules: decision.rules
+          .filter((rule) => !rule.passed)
+          .map((rule) => rule.id),
+      },
+    });
+    return { status: "blocked" as const, decision };
+  }
+
+  const prompt = await syncedBriefPrompt();
+  const metrics = BriefMetricsSchema.parse(record.brief.metrics);
+  const narrative = BriefNarrativeSchema.parse(record.brief.narrative);
+  const language = record.business.defaultLanguage === "en" ? "en" : "hi";
+  const prepared = await getDb().transaction(async (tx) => {
+    const [locked] = await tx
+      .select()
+      .from(briefs)
+      .where(eq(briefs.id, briefId))
+      .for("update");
+    if (!locked) throw new Error("Brief not found");
+    if (locked.callId) return { existingCallId: locked.callId, call: null };
+    const [call] = await tx
+      .insert(calls)
+      .values({
+        businessId: record.business.id,
+        debtorId: null,
+        purpose: "owner_brief",
+        source: "daily_brief",
+        bolnaAgentId: env.BOLNA_BRIEF_AGENT_ID,
+        status: "queued",
+        language,
+        promptVersionId: prompt.id,
+      })
+      .returning();
+    await tx
+      .update(briefs)
+      .set({ callId: call.id })
+      .where(eq(briefs.id, briefId));
+    await tx.insert(complianceEvents).values({
+      callId: call.id,
+      kind: "gate_allowed",
+      rule: "R1_allowlist",
+      detail: { purpose: "owner_brief", rules: decision.rules },
+    });
+    return { existingCallId: null, call };
+  });
+  if (!prepared.call)
+    return {
+      status: "already_started" as const,
+      callId: prepared.existingCallId!,
+    };
+
+  try {
+    const response = await getBolnaClient().makeCall({
+      agent_id: env.BOLNA_BRIEF_AGENT_ID,
+      recipient_phone_number: env.OWNER_PHONE,
+      ...(env.BOLNA_FROM_NUMBER
+        ? { from_phone_number: env.BOLNA_FROM_NUMBER }
+        : {}),
+      user_data: {
+        owner_name: record.business.ownerName,
+        language,
+        brief_script:
+          language === "en" ? record.brief.scriptEn : record.brief.scriptHi,
+        brief_facts: buildBriefFacts(metrics, narrative),
+        business_name: record.business.name,
+        call_token: prepared.call.callToken,
+      },
+      agent_data: { language },
+    });
+    await getDb()
+      .update(calls)
+      .set({
+        bolnaExecutionId: response.execution_id,
+        status: response.status ?? "queued",
+      })
+      .where(eq(calls.id, prepared.call.id));
+    await emitEvent("call.queued", {
+      callId: prepared.call.id,
+      payload: {
+        purpose: "owner_brief",
+        executionId: response.execution_id,
+        to: maskPhone(env.OWNER_PHONE),
+      },
+    });
+    return {
+      status: "queued" as const,
+      callId: prepared.call.id,
+      executionId: response.execution_id,
+    };
+  } catch (error) {
+    const ambiguous =
+      !(error instanceof BolnaError) ||
+      error.status === 0 ||
+      error.status >= 500;
+    await getDb()
+      .update(calls)
+      .set({
+        status: ambiguous ? "dispatch_unknown" : "failed",
+        terminationReason: ambiguous
+          ? "dispatch_result_unknown"
+          : "dispatch_rejected",
+      })
+      .where(eq(calls.id, prepared.call.id));
+    throw new Error(
+      ambiguous
+        ? "Owner call dispatch result unknown; inspect Bolna before retrying"
+        : "Bolna rejected the owner brief call",
+    );
+  }
 }

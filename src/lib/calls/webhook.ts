@@ -105,6 +105,7 @@ export async function ingestExecution(
     return {
       status: existing.status === execution.status ? "duplicate" : "updated",
       callId: existing.id,
+      purpose: existing.purpose,
       callStatus: execution.status,
       terminal: TERMINAL_STATUSES.has(execution.status),
     };

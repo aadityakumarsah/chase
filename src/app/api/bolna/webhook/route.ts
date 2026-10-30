@@ -53,7 +53,13 @@ export async function POST(request: NextRequest) {
     } catch {
       log.warn("Webhook receipt audit failed");
     }
-    if ("terminal" in outcome && outcome.terminal && "callId" in outcome)
+    if (
+      "terminal" in outcome &&
+      outcome.terminal &&
+      "callId" in outcome &&
+      "purpose" in outcome &&
+      outcome.purpose === "collection"
+    )
       after(async () => {
         try {
           await processCall(outcome.callId);

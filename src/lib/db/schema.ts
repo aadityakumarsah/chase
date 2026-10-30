@@ -279,9 +279,7 @@ export const calls = pgTable(
     businessId: uuid("business_id")
       .notNull()
       .references(() => businesses.id),
-    debtorId: uuid("debtor_id")
-      .notNull()
-      .references(() => debtors.id),
+    debtorId: uuid("debtor_id").references(() => debtors.id),
     purpose: callPurpose("purpose").notNull(),
     bolnaExecutionId: text("bolna_execution_id"),
     bolnaAgentId: text("bolna_agent_id"),
