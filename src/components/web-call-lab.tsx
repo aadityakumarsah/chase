@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export function WebCallLab({
   debtors,
+  initialDebtorId,
 }: {
   debtors: { id: string; shop: string; name: string }[];
+  initialDebtorId?: string;
 }) {
   const [selected, setSelected] = useState(
-    debtors.find((d) => d.shop === "Sharma General Store")?.id ??
+    debtors.find((d) => d.id === initialDebtorId)?.id ??
+      debtors.find((d) => d.shop === "Sharma General Store")?.id ??
       debtors[0]?.id ??
       "",
   );

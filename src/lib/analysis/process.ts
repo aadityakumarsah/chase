@@ -54,7 +54,7 @@ const words = (value: string) =>
 /** Idempotent completed-call processing; tool rows always outrank model output. */
 export async function processCall(
   callId: string,
-  options: { provider?: LLMProvider } = {},
+  options: { provider?: LLMProvider; force?: boolean } = {},
 ) {
   const db = getDb();
   const [row] = await db
@@ -102,7 +102,9 @@ export async function processCall(
     );
     let analysis: CallAnalysis;
     let model = row.call.analysisModel ?? "deterministic:no-conversation";
-    const savedAnalysis = CallAnalysisSchema.safeParse(row.call.analysis);
+    const savedAnalysis = options.force
+      ? { success: false as const }
+      : CallAnalysisSchema.safeParse(row.call.analysis);
     if (savedAnalysis.success) analysis = savedAnalysis.data;
     else if (!row.call.connected) {
       analysis = noConversationAnalysis(voicemail, row.call.language);

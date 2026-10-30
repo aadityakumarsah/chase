@@ -8,7 +8,7 @@ Submission target: 31 October 2026. Later parts follow the user's authoritative 
 - [x] Part 4 — Bolna agents as code, protected prompts, guarded calls and browser lab; phone acceptance remains configuration-dependent.
 - [x] Part 5 — Durable mid-call tools, hosted UPI page, demo/Razorpay confirmation, messaging and optional graph events.
 - [x] Part 6 — Exhaustive contact gate, guarded dialer/campaigns, idempotent Bolna ingestion, post-call intelligence and promise sweeper.
-- [ ] Part 7 — Live operations dashboard and stage view.
+- [x] Part 7 — Live operations dashboard and stage view; real-phone demo acceptance remains configuration-dependent.
 - [ ] Part 8 — Daily management brief and owner call.
 - [ ] Part 9 — Prompt PR generation, simulator and approval.
 - [ ] Part 10 — Production hardening, deployment and final demo rehearsal.
@@ -83,3 +83,14 @@ See [docs/llm-layer.md](docs/llm-layer.md) for configuration, commands, accounti
 - Added `calls:poll`, `promises:sweep` and `verify:part6`. Replaying the same completed fixture three times produces one call and one `call.analyzed` event; the dry campaign returns five reasoned rows. Promise sweep is idempotent and resolved no pending overdue promises during verification.
 - Added an explicit `after_hours` callback value so a 9 pm request is preserved as blocked rather than collapsed into “evening”; it moves to the next allowed morning, writes `gate_blocked`, emits `gate.blocked`, and returns the compliant explanation. Sync this updated tool schema against an active public HTTPS URL before the live 9 pm voice rehearsal.
 - Migrations 0005–0006 are applied. Typecheck, lint, production build and 157 tests pass. External phone dialing was intentionally not used; the old temporary tunnel was not assumed to remain alive.
+
+## Part 7 implementation — 31 October 2026
+
+- Added the protected operator console with a dark-default/light theme, bundled Inter and Noto Sans Devanagari variable fonts, en-IN money, tabular figures, exact IST time tooltips, skeletons, empty states, animated KPIs/queue changes and the requested slate/navy, saffron, emerald, rose and amber visual language.
+- Added admin-only summary, queue, event cursor, debtor/detail, call/detail/reanalysis, compliance, AI Ops and settings APIs. Queue/gate features come from one ranked SQL query and page read models batch their related data; live surfaces poll at 1.5 seconds and ordinary surfaces at 10 seconds without websockets.
+- Command Center now includes five KPI cards, an animated Chase Queue with explicit gate reasons and next allowed time, the focused call pipeline/timeline/transcript/recording/owner summary, a clearly labelled console-message phone preview and event ticker. Simulated receipts remain visibly labelled in KPI, stage, event and message surfaces.
+- Added Debtors with filters/search/CSV import rejection preview; debtor rating explanation, unified timeline, invoices, dossier, history chart and calls; call telemetry/transcript/tools/analysis/compliance review; R1–R11 policy and decision ledger with CSV export; Claude telemetry/caching/routing/latency/cost proof; and Part 8/9 placeholders.
+- `/lab` retains the web-call tester and adds explicit simulated payment, 9 pm callback, demo override and guarded seed-reset controls. `/settings` reports configuration status without values, agent IDs/sync times, webhook/tool activity and APP_BASE_URL, plus explicit health and configured-agent sync actions. Settings sync updates and GET-verifies existing IDs only; it never creates agents or mutates environment files.
+- `/stage` is a navigation-free 1920×1080 view with 20px-or-larger text, live call events, animated top-six queue/rationale changes, money/compliance strip, theme control and 1/2/3/R/F shortcuts. Shortcut 3 remains honestly labelled as Part 8; reset still requires confirmation and the server's local-demo safety checks.
+- Runtime verification exercised every dashboard page and read API against the 24-debtor seed with authenticated HTTP 200 responses. Typecheck, lint, production build and all 157 tests pass. Read-model verification also caught and fixed postgres-js timestamp normalization across repeated queue requests.
+- No real call, message, payment, reset or Bolna sync was triggered during Part 7 verification. `CALL_ALLOWLIST` and `DEMO_DEBTOR_PHONE` remain missing, so the requested real-phone “Call now” acceptance could not be safely executed; configured live use still passes through the Part 6 gate. Merchant identity and owner phone remain missing for Parts 5/8 live acceptance.

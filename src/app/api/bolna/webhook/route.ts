@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { processCall } from "@/lib/analysis/process";
 import { getEnv } from "@/lib/env";
 import { ingestExecution, verifyWebhookSecret } from "@/lib/calls/webhook";
+import { emitEvent } from "@/lib/events";
 import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -39,6 +40,19 @@ export async function POST(request: NextRequest) {
   }
   try {
     const outcome = await ingestExecution(body);
+    try {
+      await emitEvent("webhook.received", {
+        ...("callId" in outcome ? { callId: outcome.callId } : {}),
+        payload: {
+          status: String(
+            ("callStatus" in outcome ? outcome.callStatus : outcome.status) ??
+              "accepted",
+          ),
+        },
+      });
+    } catch {
+      log.warn("Webhook receipt audit failed");
+    }
     if ("terminal" in outcome && outcome.terminal && "callId" in outcome)
       after(async () => {
         try {

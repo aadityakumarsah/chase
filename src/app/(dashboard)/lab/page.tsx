@@ -2,8 +2,14 @@ import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { debtors } from "@/lib/db/schema";
 import { WebCallLab } from "@/components/web-call-lab";
+import { DemoControls } from "@/components/dashboard/demo-controls";
 export const dynamic = "force-dynamic";
-export default async function Lab() {
+export default async function Lab({
+  searchParams,
+}: {
+  searchParams: Promise<{ debtorId?: string }>;
+}) {
+  const { debtorId } = await searchParams;
   const rows = await getDb()
     .select({
       id: debtors.id,
@@ -30,7 +36,8 @@ export default async function Lab() {
           or contact preferences.
         </p>
       </div>
-      <WebCallLab debtors={rows} />
+      <WebCallLab debtors={rows} initialDebtorId={debtorId} />
+      <DemoControls />
     </main>
   );
 }

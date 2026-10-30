@@ -122,6 +122,7 @@ export async function runTool(
             ok: response.ok,
             idempotent: true,
             latencyMs: Date.now() - started,
+            args: safe,
           },
         },
         tx,
@@ -485,7 +486,11 @@ export async function runTool(
       {
         debtorId: debtor.id,
         callId: call.id,
-        payload: { ok: response.ok, latencyMs: Date.now() - started },
+        payload: {
+          ok: response.ok,
+          latencyMs: Date.now() - started,
+          args: safe,
+        },
       },
       tx,
     );
