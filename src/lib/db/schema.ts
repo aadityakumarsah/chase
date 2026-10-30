@@ -290,6 +290,7 @@ export const calls = pgTable(
         sql`replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')`,
       )
       .notNull(),
+    source: text("source").default("manual").notNull(),
     status: text("status").notNull(),
     terminationReason: text("termination_reason"),
     connected: boolean("connected").default(false).notNull(),
@@ -300,6 +301,7 @@ export const calls = pgTable(
     recordingUrl: text("recording_url"),
     costCents: paise("cost_cents"),
     timeToFirstAudioMs: integer("time_to_first_audio_ms"),
+    interruptionStats: jsonb("interruption_stats"),
     language: language("language"),
     promptVersionId: uuid("prompt_version_id").references(
       () => promptVersions.id,
@@ -307,6 +309,7 @@ export const calls = pgTable(
     raw: jsonb("raw"),
     analysis: jsonb("analysis"),
     analysisModel: text("analysis_model"),
+    processingStartedAt: ts("processing_started_at"),
     processedAt: ts("processed_at"),
   },
   (t) => [

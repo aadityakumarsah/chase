@@ -25,6 +25,7 @@ Sources:
 - New SIP integration uses `/trunk`, telephony provider `trunk`, and a trunk-owned outbound caller ID. `/sip-trunks` and `sip-trunk` are legacy. Read POP settings from the API rather than hard-coding them.
 - Sarvam transcription takes plain ISO language codes (`hi`, not `hi-IN`). Resolve TTS voice/model pairs from the live voice catalog in Part 4. Never invent voice IDs or silently substitute models.
 - **Extraction migration:** the current docs index says legacy `custom_extractions`, `agent_extraction` and flat extraction keys were retired. Revisit https://www.bolna.ai/docs/migrating-to-extractions/overview.md before implementing Part 6. Call Summary now appears under `General > Call Summary` with a `subjective` value; the top-level webhook summary remains supported. Preserve raw external payloads only in appropriately access-controlled storage, never logs.
+- **Execution ingestion (Part 6):** https://www.bolna.ai/docs/post-call/execution-payload.md says one execution is delivered repeatedly as status changes. Final facts are reliable only at a terminal status; `completed` alone does not prove a conversation. Chase requires positive `conversation_duration` and a non-empty `user:` transcript line, then persists transcript, recording URL, total cost (already cents), `latency_data.time_to_first_audio` and nested `interruption_stats`. Source IPs are diagnostic only because proxies can rewrite them.
 
 ## Docs index landmarks for later parts
 

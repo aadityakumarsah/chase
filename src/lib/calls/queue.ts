@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { latestRatings } from "@/lib/chase/recompute";
-import { evaluateGate, loadGateFacts } from "@/lib/compliance/policy";
+import { evaluateDebtorContact } from "@/lib/compliance/contact";
 import { getDb, type DbExecutor } from "@/lib/db";
 import { getEnv, type Env } from "@/lib/env";
 
@@ -46,8 +46,12 @@ export async function callQueue(
     .slice(0, limit);
   const entries: QueueEntry[] = [];
   for (const row of ranked) {
-    const facts = await loadGateFacts(row.rating.debtorId, db, now);
-    const decision = evaluateGate(facts, { now, env });
+    const { decision } = await evaluateDebtorContact(row.rating.debtorId, {
+      db,
+      now,
+      env,
+      record: false,
+    });
     entries.push({
       debtorId: row.rating.debtorId,
       shopName: row.shopName,
@@ -56,7 +60,9 @@ export async function callQueue(
       nextAction: row.rating.nextAction,
       rationale: row.rating.rationale,
       allowed: decision.allowed,
-      blocks: decision.blocks.map((b) => b.rule),
+      blocks: decision.rules
+        .filter((rule) => !rule.passed)
+        .map((rule) => rule.id),
       nextAllowedAt: decision.nextAllowedAt?.toISOString() ?? null,
     });
   }

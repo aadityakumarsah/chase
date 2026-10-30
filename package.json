@@ -29,7 +29,10 @@
     "eval:analysis": "vitest run --config vitest.eval.config.mts",
     "bolna:voices": "tsx scripts/bolna-voices.ts",
     "call:dry-run": "tsx scripts/call-dry-run.ts",
-    "call:test": "tsx scripts/test-call.ts"
+    "call:test": "tsx scripts/test-call.ts",
+    "calls:poll": "tsx scripts/calls-poll.ts",
+    "promises:sweep": "tsx scripts/promises-sweep.ts",
+    "verify:part6": "tsx scripts/verify-part6.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

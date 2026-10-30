@@ -23,7 +23,7 @@ export const toolSchemas = {
   schedule_callback: z.object({
     ...context,
     callback_date: z.iso.date(),
-    time_window: z.enum(["morning", "afternoon", "evening"]),
+    time_window: z.enum(["morning", "afternoon", "evening", "after_hours"]),
   }),
   flag_dispute: z.object({
     ...context,
@@ -49,7 +49,7 @@ const descriptions: Record<ToolName, string> = {
   check_payment_status:
     "Check payment after the caller says they paid; never assume a payment arrived.",
   schedule_callback:
-    "Record a requested date and time window; tell the caller only the allowed time returned.",
+    "Record a requested date and time window. Use after_hours for any request before 08:00 or at/after 19:00, including 9 pm; tell the caller only the allowed time returned.",
   flag_dispute:
     "Immediately flag a disputed amount, invoice or already-paid claim for owner review. Never argue.",
   register_opt_out:

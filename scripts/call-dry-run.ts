@@ -12,7 +12,6 @@ async function main() {
   const { closeDb } = await import("../src/lib/db");
   const { callQueue } = await import("../src/lib/calls/queue");
   const { previewCall } = await import("../src/lib/calls/dispatch");
-  const { describeBlocks } = await import("../src/lib/compliance/policy");
   const { formatIST } = await import("../src/lib/time");
   try {
     const target = process.argv[2];
@@ -37,7 +36,14 @@ async function main() {
     }
     const preview = await previewCall(debtorId);
     green(
-      `Gate for ${debtorId}: ${describeBlocks(preview.decision)}${
+      `Gate for ${debtorId}: ${
+        preview.decision.allowed
+          ? "allowed"
+          : preview.decision.rules
+              .filter((rule) => !rule.passed)
+              .map((rule) => rule.id)
+              .join(", ")
+      }${
         preview.decision.nextAllowedAt
           ? `; next allowed ${formatIST(preview.decision.nextAllowedAt)} IST`
           : ""

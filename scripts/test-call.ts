@@ -35,7 +35,10 @@ async function main() {
     const result = await dispatchCall(debtor.id, { to });
     if (result.status === "blocked")
       throw new Error(
-        `Call blocked: ${result.decision.blocks.map((b) => b.rule).join(", ")}`,
+        `Call blocked: ${result.decision.rules
+          .filter((rule) => !rule.passed)
+          .map((rule) => rule.id)
+          .join(", ")}`,
       );
     const client = getBolnaClient();
     let previous = "";

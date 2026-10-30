@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
+import { processCall } from "@/lib/analysis/process";
 import { getEnv } from "@/lib/env";
 import { ingestExecution, verifyWebhookSecret } from "@/lib/calls/webhook";
 import { log } from "@/lib/log";
@@ -20,6 +21,11 @@ export async function POST(request: NextRequest) {
     request.nextUrl.searchParams.get("token");
   if (!verifyWebhookSecret(presented, env))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const sourceIp = request.headers
+    .get("x-forwarded-for")
+    ?.split(",")[0]
+    ?.trim();
+  log.info("Bolna webhook received", { sourceIp: sourceIp ?? "unknown" });
   if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES)
     return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   let body: unknown;
@@ -33,6 +39,14 @@ export async function POST(request: NextRequest) {
   }
   try {
     const outcome = await ingestExecution(body);
+    if ("terminal" in outcome && outcome.terminal && "callId" in outcome)
+      after(async () => {
+        try {
+          await processCall(outcome.callId);
+        } catch {
+          log.warn("Post-call processing failed", { callId: outcome.callId });
+        }
+      });
     // Always 2xx on an accepted payload so Bolna does not retry indefinitely.
     return NextResponse.json(outcome, {
       status: 200,

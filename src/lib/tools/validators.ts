@@ -69,10 +69,14 @@ const windows = {
   morning: ["10:00", "12:00"],
   afternoon: ["14:00", "16:00"],
   evening: ["17:00", "18:30"],
+  // The tool needs to preserve that a caller asked for an impermissible time.
+  after_hours: ["21:00", "21:01"],
 } as const;
+type CallbackWindow = keyof typeof windows;
+type AllowedCallbackWindow = Exclude<CallbackWindow, "after_hours">;
 export function callbackSlot(
   day: string,
-  bucket: keyof typeof windows,
+  bucket: CallbackWindow,
   business: CallWindow,
   now = new Date(),
 ) {
@@ -83,7 +87,7 @@ export function callbackSlot(
     last = addIstDays(today, 7);
   const sunday = (d: string) =>
     new Date(`${d}T12:00:00+05:30`).getUTCDay() === 0;
-  const find = (d: string, b: keyof typeof windows) => {
+  const find = (d: string, b: AllowedCallbackWindow) => {
     const start = [w.start, windows[b][0]].sort().at(-1)!;
     const end = [w.end, windows[b][1]].sort()[0];
     if (start >= end || sunday(d)) return null;
@@ -95,18 +99,23 @@ export function callbackSlot(
     );
     return istDay(slot) === d && slot < istInstant(d, end) ? slot : null;
   };
-  const direct = day >= today && day <= last ? find(day, bucket) : null;
+  const direct =
+    bucket !== "after_hours" && day >= today && day <= last
+      ? find(day, bucket)
+      : null;
   if (direct)
     return {
       requested,
       scheduled: direct,
       adjusted: direct.getTime() !== requested.getTime(),
-      window: bucket,
+      window: bucket as AllowedCallbackWindow,
     };
   // An invalid request is moved to the next actual permitted bucket, never silently kept after hours.
-  for (let n = 0; n <= 7; n++)
+  const requestedInRange = day >= today && day <= last;
+  const searchDay = requestedInRange ? day : today;
+  for (let n = requestedInRange ? 1 : 0; n <= 7; n++)
     for (const b of ["morning", "afternoon", "evening"] as const) {
-      const d = addIstDays(today, n),
+      const d = addIstDays(searchDay, n),
         slot = find(d, b);
       if (slot)
         return { requested, scheduled: slot, adjusted: true, window: b };

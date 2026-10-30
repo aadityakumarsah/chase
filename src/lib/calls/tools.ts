@@ -337,7 +337,7 @@ export async function runTool(
         scheduledFor: slot.scheduled,
         window: slot.window,
       });
-      if (slot.adjusted)
+      if (slot.adjusted) {
         await tx.insert(complianceEvents).values({
           debtorId: debtor.id,
           callId: call.id,
@@ -348,15 +348,36 @@ export async function runTool(
             scheduled: slot.scheduled.toISOString(),
           },
         });
+        await emitEvent(
+          "gate.blocked",
+          {
+            debtorId: debtor.id,
+            callId: call.id,
+            payload: {
+              rules: ["R5_calling_window"],
+              requested: slot.requested.toISOString(),
+              scheduled: slot.scheduled.toISOString(),
+            },
+          },
+          tx,
+        );
+      }
       response = reply(
         true,
         slot.adjusted
-          ? words(
-              lang,
-              "We call only during allowed hours. Would the next available slot work?",
-              "Allowed hours के बाहर call नहीं करते। अगला slot ठीक रहेगा?",
-              "परवानगीच्या वेळेतच call करतो. पुढची वेळ चालेल?",
-            )
+          ? input.time_window === "after_hours"
+            ? words(
+                lang,
+                "We do not call after 6:30 pm. Would tomorrow at 10 am work?",
+                "शाम 6:30 के बाद हम call नहीं करते। कल सुबह 10 बजे ठीक रहेगा?",
+                "संध्याकाळी 6:30 नंतर call करत नाही. उद्या सकाळी 10 वाजता चालेल?",
+              )
+            : words(
+                lang,
+                "We call only during allowed hours. Would the next available slot work?",
+                "Allowed hours के बाहर call नहीं करते। अगला slot ठीक रहेगा?",
+                "परवानगीच्या वेळेतच call करतो. पुढची वेळ चालेल?",
+              )
           : words(
               lang,
               "Okay, the callback is scheduled.",

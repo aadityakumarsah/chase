@@ -50,14 +50,40 @@ export async function ingestExecution(
 ) {
   const execution = executionSchema.parse(payload);
   return getDb().transaction(async (tx) => {
-    const [existing] = await tx
-      .select()
-      .from(calls)
-      .where(eq(calls.bolnaExecutionId, execution.id))
-      .for("update");
+    let existing: typeof calls.$inferSelect | undefined = (
+      await tx
+        .select()
+        .from(calls)
+        .where(eq(calls.bolnaExecutionId, execution.id))
+        .for("update")
+    )[0];
+    if (!existing) {
+      const context = execution.context_details as
+        { recipient_data?: { call_token?: unknown } } | null | undefined;
+      const token = context?.recipient_data?.call_token;
+      if (typeof token === "string" && /^[a-f0-9]{64}$/.test(token)) {
+        existing = (
+          await tx
+            .select()
+            .from(calls)
+            .where(eq(calls.callToken, token))
+            .for("update")
+        )[0];
+        if (existing && !existing.bolnaExecutionId) {
+          await tx
+            .update(calls)
+            .set({ bolnaExecutionId: execution.id })
+            .where(eq(calls.id, existing.id));
+          existing = { ...existing, bolnaExecutionId: execution.id };
+        } else if (existing?.bolnaExecutionId !== execution.id)
+          existing = undefined;
+      }
+    }
     if (!existing)
       return { status: "unknown_execution", executionId: execution.id };
-    if (isStaleExecution(existing.status, execution.status))
+    const finalEnrichment =
+      execution.status === "completed" && existing.processedAt === null;
+    if (isStaleExecution(existing.status, execution.status) && !finalEnrichment)
       return { status: "stale", callId: existing.id };
     const update = mapExecutionToCall(execution, options.now ?? new Date());
     // Same-status deliveries can enrich final facts. Do not emit duplicate lifecycle events.
@@ -88,29 +114,35 @@ export function mapExecutionToCall(execution: BolnaExecution, now: Date) {
   const terminal = TERMINAL_STATUSES.has(execution.status);
   return {
     status: execution.status,
-    connected: hasConversation(execution),
-    startedAt: date(execution.created_at),
+    connected: terminal ? hasConversation(execution) : false,
+    startedAt: date(execution.initiated_at) ?? date(execution.created_at),
     endedAt: terminal ? (date(execution.updated_at) ?? now) : undefined,
     durationSec:
-      execution.conversation_duration == null
+      !terminal || execution.conversation_duration == null
         ? undefined
         : Math.round(execution.conversation_duration),
-    transcript: execution.transcript ?? undefined,
-    recordingUrl: execution.telephony_data?.recording_url ?? undefined,
+    transcript: terminal ? (execution.transcript ?? undefined) : undefined,
+    recordingUrl: terminal
+      ? (execution.telephony_data?.recording_url ?? undefined)
+      : undefined,
     // Official API reports cents, already. The ledger column is integer cents.
     costCents:
-      execution.total_cost == null
+      !terminal || execution.total_cost == null
         ? undefined
         : BigInt(Math.round(execution.total_cost)),
-    terminationReason:
-      execution.termination_reason ??
-      execution.error_message ??
-      execution.telephony_data?.hangup_reason ??
-      undefined,
+    terminationReason: terminal
+      ? (execution.termination_reason ??
+        execution.error_message ??
+        execution.telephony_data?.hangup_reason ??
+        undefined)
+      : undefined,
     timeToFirstAudioMs:
-      execution.latency_data?.time_to_first_audio == null
+      !terminal || execution.latency_data?.time_to_first_audio == null
         ? undefined
         : Math.round(execution.latency_data.time_to_first_audio),
+    interruptionStats: terminal
+      ? (execution.latency_data?.interruption_stats ?? undefined)
+      : undefined,
     raw: scrubCredentials(execution) as Record<string, unknown>,
   };
 }

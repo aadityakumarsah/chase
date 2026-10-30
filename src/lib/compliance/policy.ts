@@ -237,7 +237,6 @@ export async function loadGateFacts(
     .where(
       and(
         eq(promises.debtorId, debtorId),
-        eq(promises.confirmed, true),
         eq(promises.status, "pending"),
         gte(promises.promisedFor, today),
       ),

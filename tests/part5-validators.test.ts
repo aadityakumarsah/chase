@@ -59,4 +59,16 @@ describe("Part 5 tool validation", () => {
     expect(slot.adjusted).toBe(true);
     expect(slot.scheduled.getUTCDay()).not.toBe(0);
   });
+  it("moves a 9 pm request to the next allowed morning", () => {
+    const slot = callbackSlot(
+      "2026-10-30",
+      "after_hours",
+      { start: "09:00", end: "18:30" },
+      new Date("2026-10-30T06:00:00Z"),
+    );
+    expect(slot.adjusted).toBe(true);
+    expect(slot.requested.toISOString()).toBe("2026-10-30T15:30:00.000Z");
+    expect(slot.scheduled.toISOString()).toBe("2026-10-31T04:30:00.000Z");
+    expect(slot.window).toBe("morning");
+  });
 });

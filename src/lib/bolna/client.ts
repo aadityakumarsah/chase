@@ -63,7 +63,10 @@ export const executionSchema = z.looseObject({
   status: z.string(),
   termination_reason: z.string().nullish(),
   latency_data: z
-    .looseObject({ time_to_first_audio: z.number().nullish() })
+    .looseObject({
+      time_to_first_audio: z.number().nullish(),
+      interruption_stats: z.record(z.string(), z.unknown()).nullish(),
+    })
     .nullish(),
   error_message: z.string().nullish(),
   conversation_duration: z.coerce.number().nonnegative().nullish(),
@@ -71,6 +74,7 @@ export const executionSchema = z.looseObject({
   answered_by_voice_mail: z.boolean().nullish(),
   transcript: z.string().nullish(),
   created_at: z.string().nullish(),
+  initiated_at: z.string().nullish(),
   updated_at: z.string().nullish(),
   usage_breakdown: z.looseObject({}).nullish(),
   telephony_data: z

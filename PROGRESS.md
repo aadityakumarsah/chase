@@ -7,7 +7,11 @@ Submission target: 31 October 2026. Later parts follow the user's authoritative 
 - [x] Part 3 — LLM layer, Contact Dossier and analysis schema implemented; live Anthropic acceptance checks pass.
 - [x] Part 4 — Bolna agents as code, protected prompts, guarded calls and browser lab; phone acceptance remains configuration-dependent.
 - [x] Part 5 — Durable mid-call tools, hosted UPI page, demo/Razorpay confirmation, messaging and optional graph events.
-- [ ] Parts 6–10 — Completed-call analysis, dashboard, owner briefs, Prompt PRs and final demo, as assigned by later briefs.
+- [x] Part 6 — Exhaustive contact gate, guarded dialer/campaigns, idempotent Bolna ingestion, post-call intelligence and promise sweeper.
+- [ ] Part 7 — Live operations dashboard and stage view.
+- [ ] Part 8 — Daily management brief and owner call.
+- [ ] Part 9 — Prompt PR generation, simulator and approval.
+- [ ] Part 10 — Production hardening, deployment and final demo rehearsal.
 
 ## Resume state — 29 October 2026
 
@@ -67,3 +71,15 @@ See [docs/llm-layer.md](docs/llm-layer.md) for configuration, commands, accounti
 - Graph mode builds four event-driven nodes and injects `link_opened`/`payment_completed`; simple mode remains the configured fallback. No graph agent was synced during this part.
 - Migrations 0003–0004 applied. Typecheck, lint, production build and 131 tests pass. The local HTTP verification completed auth, invalid amount, idempotent repeat, console delivery, pay-page open, simulated ₹2,000 payment, invoice allocation and paid-status checks. The payment is explicitly stored and spoken as simulated.
 - Live Meta/Twilio/Razorpay credentials are not configured, so their request/signature boundaries are tested locally but external delivery was not attempted. The full voice-driven tool conversation and proactive graph response remain live acceptance checks.
+
+## Part 6 implementation — 30 October 2026
+
+- Added the pure, exhaustive R1–R11 compliance gate with ordered results, IST/hard-window/Sunday enforcement, daily/weekly caps, minimum and hardship gaps, promise-day reminders, owner-brief exemption, visible allowlisted demo override, combined `nextAllowedAt`, and durable decision audit records.
+- Manual, campaign and callback dialing now share one gate. The dialer sends and records first-contact disclosure before the first dial, compiles the dossier, refreshes the rating, reserves a fresh call token under a debtor lock, records prompt/source, and sets Bolna's bypass flag only for a visible consenting-tester override. No Part 6 verification placed a phone call.
+- Added authenticated same-origin start/refresh endpoints and a rating-plus-due-callback campaign planner. Dry runs return each candidate and reason; live runs re-gate every candidate, respect available concurrency, and space starts by 3–5 seconds.
+- Bolna webhook ingestion follows the current execution-payload contract: loose schema, constant-time token, informational source-IP logging, execution/call-token reconciliation, monotonic lifecycle events, terminal-only final facts, transcript-based connection detection, cost, recording, first-audio latency and interruption metrics. Post-call work runs through `after()` and uses a reclaimable database claim to prevent concurrent duplicate analyses.
+- Connected calls use SMART typed analysis with database tool invocations as truth. Reconciliation creates conservative unconfirmed transcript-only promises and inferred opt-out/dispute holds, persists flags, alerts the owner on high severity, refreshes dossier/rating, and uses FAST for a rationale under 20 words. No-conversation/voicemail calls use a deterministic record and make no LLM request.
+- A previously completed real browser execution was GET-refreshed from Bolna and processed successfully: transcript, typed analysis, cost and latency are present, its dossier was refreshed, and its latest rating is 65 with a 19-word rationale. This validates the real web-call pipeline without placing a new call.
+- Added `calls:poll`, `promises:sweep` and `verify:part6`. Replaying the same completed fixture three times produces one call and one `call.analyzed` event; the dry campaign returns five reasoned rows. Promise sweep is idempotent and resolved no pending overdue promises during verification.
+- Added an explicit `after_hours` callback value so a 9 pm request is preserved as blocked rather than collapsed into “evening”; it moves to the next allowed morning, writes `gate_blocked`, emits `gate.blocked`, and returns the compliant explanation. Sync this updated tool schema against an active public HTTPS URL before the live 9 pm voice rehearsal.
+- Migrations 0005–0006 are applied. Typecheck, lint, production build and 157 tests pass. External phone dialing was intentionally not used; the old temporary tunnel was not assumed to remain alive.
