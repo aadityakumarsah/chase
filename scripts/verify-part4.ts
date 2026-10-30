@@ -34,11 +34,10 @@ async function main() {
     const args = {
       account_id: demo.id,
       call_token: call.callToken,
-      scope: "all",
     };
-    const first = await runTool("register_opt_out", args);
-    assert(first.simulated);
-    await runTool("register_opt_out", args);
+    const first = await runTool("check_payment_status", args);
+    assert.equal(first.ok, false);
+    await runTool("check_payment_status", args);
     const logs = await getDb()
       .select()
       .from(toolInvocations)

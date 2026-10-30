@@ -5,7 +5,9 @@ Submission target: 31 October 2026. Later parts follow the user's authoritative 
 - [x] Part 1 — Scaffold, validated environment, utilities, Bolna read client, auth, health, tooling, project brain.
 - [x] Part 2 — Full product schema, fictional portfolio/history seed, CSV import, portfolio queries and deterministic Chase Rating.
 - [x] Part 3 — LLM layer, Contact Dossier and analysis schema implemented; live Anthropic acceptance checks pass.
-- [ ] Parts 4–10 — Calling/tools, payment/messaging delivery, completed-call analysis, dashboard, owner briefs, Prompt PRs and final demo, as assigned by later briefs.
+- [x] Part 4 — Bolna agents as code, protected prompts, guarded calls and browser lab; phone acceptance remains configuration-dependent.
+- [x] Part 5 — Durable mid-call tools, hosted UPI page, demo/Razorpay confirmation, messaging and optional graph events.
+- [ ] Parts 6–10 — Completed-call analysis, dashboard, owner briefs, Prompt PRs and final demo, as assigned by later briefs.
 
 ## Resume state — 29 October 2026
 
@@ -56,3 +58,12 @@ See [docs/llm-layer.md](docs/llm-layer.md) for configuration, commands, accounti
 - Follow-up browser test with the explicit Anthropic prefix fixed provider routing but failed with Anthropic `temperature is deprecated for this model`. Omitting temperature from the request does not solve it: GET returns Bolna's default 0.1. The user subsequently selected Haiku 4.5 (see verification below). The app's native Anthropic dossier layer is unaffected. The browser verification observed a completed execution with 13.1 seconds of audio and user transcription, but no successful LLM response; do not describe the conversation as passing.
 - Resolved the voice-model blocker with the user's explicit Haiku 4.5 selection: appended `BOLNA_LLM_MODEL=claude-haiku-4-5-20251001` to `.env.local` without modifying `.env`, then synced and GET-verified both agents. A 39.7-second browser execution completed without LLM errors: AI welcome, user identity confirmation, honest “I am an AI assistant, not a human” response to the robot question, then ₹12,500/two-invoice disclosure. Synthetic microphone input was used; this is browser verification, not a phone call. Broken-promise wording and real-phone acceptance remain unverified.
 - Browser end notifications now revoke tools with `call-disconnected` while permitting the later completed webhook to enrich final facts; they cannot overwrite an already terminal execution. Production build passes.
+
+## Part 5 implementation — 30 October 2026
+
+- Replaced tool stubs with 45-minute call/debtor binding, constant-time authentication, coercing Zod schemas, per-IP/per-call limits, durable idempotency, compact multilingual responses and invocation/feed audit rows.
+- Implemented payment-link creation, console/Meta/Twilio messaging, UPI URI and SVG QR pay page, open tracking, clearly labelled demo simulation, Razorpay creation/signature verification, oldest-invoice allocation, promise resolution and rating refresh.
+- Added callbacks with Sunday/window correction, confirmed promises, dispute holds and owner notification, opt-outs, WhatsApp inbound STOP handling and delivery status updates.
+- Graph mode builds four event-driven nodes and injects `link_opened`/`payment_completed`; simple mode remains the configured fallback. No graph agent was synced during this part.
+- Migrations 0003–0004 applied. Typecheck, lint, production build and 131 tests pass. The local HTTP verification completed auth, invalid amount, idempotent repeat, console delivery, pay-page open, simulated ₹2,000 payment, invoice allocation and paid-status checks. The payment is explicitly stored and spoken as simulated.
+- Live Meta/Twilio/Razorpay credentials are not configured, so their request/signature boundaries are tested locally but external delivery was not attempted. The full voice-driven tool conversation and proactive graph response remain live acceptance checks.

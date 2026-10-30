@@ -126,7 +126,7 @@ describe("Bolna user_data", () => {
       "call_token",
     ]);
     expect(v.outstanding_rupees).toBe(12500);
-    expect(v.min_payment_rupees).toBe(2500);
+    expect(v.min_payment_rupees).toBe(2000);
     expect(v.last_promise_spoken).toContain("पूरा नहीं हुआ");
     expect(v.outstanding_spoken).toBe("12,500 रुपये");
   });

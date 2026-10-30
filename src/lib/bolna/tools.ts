@@ -4,7 +4,7 @@ const context = {
   account_id: z.uuid(),
   call_token: z.string().regex(/^[a-f0-9]{64}$/),
 };
-const amount = z.number().int().positive().max(100_000_000);
+const amount = z.coerce.number().int().positive().max(100_000_000);
 export const toolSchemas = {
   send_payment_link: z.object({ ...context, amount_rupees: amount }),
   record_promise_to_pay: z.object({

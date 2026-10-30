@@ -110,6 +110,12 @@ export const envSchema = z.object({
     .enum(["console", "meta_whatsapp", "twilio_whatsapp", "twilio_sms"])
     .default("console"),
   META_WA_TOKEN: optional,
+  META_APP_SECRET: optional,
+  META_GRAPH_VERSION: z
+    .string()
+    .regex(/^v[0-9]+\.0$/)
+    .default("v26.0"),
+  META_WA_TEMPLATE_LANGUAGE: z.string().default("hi"),
   META_WA_PHONE_NUMBER_ID: optional,
   META_WA_VERIFY_TOKEN: optional,
   META_WA_TEMPLATE_NAME: optional,

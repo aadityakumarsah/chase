@@ -1,0 +1,1 @@
+ALTER TABLE "calls" ALTER COLUMN "debtor_id" SET NOT NULL;

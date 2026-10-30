@@ -65,13 +65,19 @@ function build(env: Env, prompt: string, brief: boolean) {
           },
           tools_config: {
             llm_agent: {
-              agent_type: "simple_llm_agent",
+              agent_type:
+                !brief && env.BOLNA_AGENT_MODE === "graph"
+                  ? "graph_agent"
+                  : "simple_llm_agent",
               agent_flow_type: "streaming",
               llm_config: {
                 provider: env.BOLNA_LLM_PROVIDER,
                 model,
                 max_tokens: brief ? 200 : 150,
                 ...(modernClaude ? {} : { temperature: 0.3 }),
+                ...(!brief && env.BOLNA_AGENT_MODE === "graph"
+                  ? graphConfig(model, renderPrompt(prompt))
+                  : {}),
               },
             },
             transcriber: {
@@ -124,6 +130,66 @@ function build(env: Env, prompt: string, brief: boolean) {
       ],
     },
     agent_prompts: { task_1: { system_prompt: renderPrompt(prompt) } },
+  };
+}
+function graphConfig(model: string, prompt: string) {
+  return {
+    agent_information: prompt,
+    routing_model: model,
+    current_node_id: "main",
+    nodes: [
+      {
+        id: "main",
+        prompt: "Run the collections conversation as described.",
+        edges: [
+          {
+            to_node_id: "guide_payment",
+            condition_type: "event",
+            event_name: "link_opened",
+          },
+          {
+            to_node_id: "payment_confirmed",
+            condition_type: "event",
+            event_name: "payment_completed",
+          },
+          {
+            to_node_id: "closing",
+            condition: "The conversation is complete and agreed",
+          },
+        ],
+      },
+      {
+        id: "guide_payment",
+        prompt:
+          "The caller opened the payment link for {{link_amount}}. Briefly guide them to tap Pay, choose UPI and approve, then wait.",
+        edges: [
+          {
+            to_node_id: "payment_confirmed",
+            condition_type: "event",
+            event_name: "payment_completed",
+          },
+          {
+            to_node_id: "main",
+            condition: "The caller discusses something else",
+          },
+        ],
+      },
+      {
+        id: "payment_confirmed",
+        prompt:
+          "Payment of {{paid_amount_spoken}} arrived, reference {{payment_ref}}. Thank them, confirm {{remaining_spoken}}, then ask for a date if needed.",
+        edges: [
+          { to_node_id: "main", condition: "A balance remains" },
+          { to_node_id: "closing", condition: "Nothing remains to discuss" },
+        ],
+      },
+      {
+        id: "closing",
+        prompt:
+          "Summarise the agreement in one sentence, thank them and end the call.",
+        edges: [],
+      },
+    ],
   };
 }
 export const buildCollectionsAgent = (env: Env, prompt: string) =>

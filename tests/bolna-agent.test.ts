@@ -208,6 +208,17 @@ describe("agent contracts", () => {
     );
     expect(p.agent_config.tasks[0].task_config.call_terminate).toBe(420);
   });
+  it("builds event-driven payment nodes in graph mode", () => {
+    const p = buildCollectionsAgent(
+      { ...env, BOLNA_AGENT_MODE: "graph" },
+      readPromptFile("collections").source,
+    );
+    const llm = p.agent_config.tasks[0].tools_config.llm_agent;
+    expect(llm.agent_type).toBe("graph_agent");
+    expect(
+      llm.llm_config.nodes!.map((node: { id: string }) => node.id),
+    ).toEqual(["main", "guide_payment", "payment_confirmed", "closing"]);
+  });
   it("rejects localhost HTTPS and unallowlisted transfers", () => {
     expect(() =>
       buildCollectionsAgent(

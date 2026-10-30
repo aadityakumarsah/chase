@@ -34,7 +34,7 @@ Provider interfaces:
 - Bolna REST: https://api.bolna.ai, Bearer auth; agents, calls, executions, graph events and web-call sessions. Part 1 implements read-only getMe/listAgents/getAgent.
 - LLM: native Anthropic plus OpenAI-compatible OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Together and custom base URL. Use explicit env provider/model selection, no silent switches.
 - Messaging: console by default (persisted simulated messages visible on the dashboard), then Meta WhatsApp, Twilio WhatsApp and SMS adapters.
-- Payments: hosted UPI page by default, then Razorpay test mode. Part 1 defines the interface and inert public page; payment behavior comes later.
+- Payments: hosted UPI page by default, then Razorpay test mode. Part 5 implements durable links, open tracking, confirmation and clearly labelled demo simulation.
 
 Public authenticated service surfaces (independent of dashboard login): /api/bolna/webhook, /api/tools/*, /api/llm/v1/chat/completions; future webhooks, cron and web-call routes. They need HTTPS through Cloudflare Tunnel/ngrok locally or Vercel. Exemption from admin auth never means exemption from endpoint-specific secrets/signature validation.
 
@@ -99,6 +99,7 @@ Use Node >=20.19 and `corepack enable`. `pnpm install` installs pinned lockfile 
 - pnpm seed / pnpm seed --reset — fictional portfolio seed / explicit local demo reset; pnpm bolna:sync — explicitly sync and GET-verify both Bolna agents; requires a public HTTPS origin.
 - pnpm tunnel — prints macOS Cloudflare/ngrok instructions, never starts a tunnel.
 - pnpm format / format:check — formatting.
+- pnpm exec tsx scripts/verify-part5.ts — local HTTP payment/message acceptance; records one explicitly simulated payment in the fictional portfolio.
 - pnpm llm:ping / pnpm dossier:demo — explicit live LLM tier checks / demo dossier compilation; require configured credentials.
 - RUN_LLM_EVALS=1 pnpm eval:analysis — explicit live six-transcript evaluation; skipped without opt-in.
 - See docs/llm-layer.md for Part 3 routing, fallback, telemetry and verification limits.

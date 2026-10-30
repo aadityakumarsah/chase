@@ -69,6 +69,7 @@ export function isPublicPath(path: string): boolean {
     "/login",
     "/pay",
     "/api/tools",
+    "/api/pay",
     "/api/bolna",
     "/api/webhooks",
     "/api/llm",

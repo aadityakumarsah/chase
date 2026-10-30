@@ -204,6 +204,7 @@ export const debtors = pgTable(
     status: debtorStatus("status").default("active").notNull(),
     notes: text("notes"),
     firstContactDisclosedAt: ts("first_contact_disclosed_at"),
+    lastInboundAt: ts("last_inbound_at"),
   },
   (t) => [
     uniqueIndex("debtors_business_phone_uq").on(t.businessId, t.phoneE164),
@@ -278,7 +279,9 @@ export const calls = pgTable(
     businessId: uuid("business_id")
       .notNull()
       .references(() => businesses.id),
-    debtorId: uuid("debtor_id").references(() => debtors.id),
+    debtorId: uuid("debtor_id")
+      .notNull()
+      .references(() => debtors.id),
     purpose: callPurpose("purpose").notNull(),
     bolnaExecutionId: text("bolna_execution_id"),
     bolnaAgentId: text("bolna_agent_id"),
@@ -378,6 +381,7 @@ export const paymentLinks = pgTable(
       .notNull()
       .references(() => debtors.id),
     callId: uuid("call_id").references(() => calls.id),
+    isDemo: boolean("is_demo").default(false).notNull(),
     token: text("token")
       .default(
         sql`replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')`,
@@ -396,6 +400,9 @@ export const paymentLinks = pgTable(
     uniqueIndex("payment_links_token_uq").on(t.token),
     index("payment_links_debtor_idx").on(t.debtorId),
     index("payment_links_call_idx").on(t.callId),
+    uniqueIndex("payment_links_active_call_uq")
+      .on(t.callId)
+      .where(sql`${t.status} IN ('created', 'opened')`),
     index("payment_links_provider_ref_idx").on(t.provider, t.providerRef),
     index("payment_links_expiry_idx").on(t.status, t.expiresAt),
     check("payment_link_amount_positive", sql`${t.amountPaise} > 0`),
@@ -412,6 +419,9 @@ export const payments = pgTable(
     paymentLinkId: uuid("payment_link_id").references(() => paymentLinks.id),
     amountPaise: paise("amount_paise").notNull(),
     method: paymentMethod("method").notNull(),
+    unappliedPaise: paise("unapplied_paise")
+      .default(sql`0`)
+      .notNull(),
     providerRef: text("provider_ref"),
     receivedAt: ts("received_at").notNull(),
     source: paymentSource("source").notNull(),
@@ -447,9 +457,7 @@ export const toolInvocations = pgTable(
     id: id(),
     ...audit(),
     callId: uuid("call_id").references(() => calls.id),
-    debtorId: uuid("debtor_id")
-      .notNull()
-      .references(() => debtors.id),
+    debtorId: uuid("debtor_id").references(() => debtors.id),
     toolName: text("tool_name").notNull(),
     args: jsonb("args").notNull(),
     result: jsonb("result"),
@@ -460,7 +468,7 @@ export const toolInvocations = pgTable(
   (t) => [
     index("tool_invocations_call_idx").on(t.callId),
     index("tool_invocations_debtor_idx").on(t.debtorId),
-    uniqueIndex("tool_invocations_idempotency_uq").on(t.idempotencyKey),
+    index("tool_invocations_idempotency_idx").on(t.idempotencyKey),
   ],
 );
 export const messages = pgTable(
@@ -471,6 +479,10 @@ export const messages = pgTable(
     debtorId: uuid("debtor_id").references(() => debtors.id),
     callId: uuid("call_id").references(() => calls.id),
     toE164: text("to_e164").notNull(),
+    kind: text("kind").default("general").notNull(),
+    paymentLinkId: uuid("payment_link_id").references(() => paymentLinks.id),
+    deliveryStartedAt: ts("delivery_started_at"),
+    dedupeKey: text("dedupe_key"),
     channel: messageChannel("channel").notNull(),
     direction: messageDirection("direction").notNull(),
     provider: text("provider").notNull(),
@@ -482,7 +494,8 @@ export const messages = pgTable(
   (t) => [
     index("messages_debtor_created_idx").on(t.debtorId, t.createdAt),
     index("messages_call_idx").on(t.callId),
-    index("messages_provider_id_idx").on(t.provider, t.providerMessageId),
+    uniqueIndex("messages_provider_id_uq").on(t.provider, t.providerMessageId),
+    uniqueIndex("messages_dedupe_uq").on(t.dedupeKey),
   ],
 );
 export const contactDossiers = pgTable(

@@ -100,7 +100,7 @@ export function toCallVariables(input: {
     dossier: input.dossier.text,
     min_payment_rupees: Math.min(
       whole,
-      Math.max(500, Math.round((whole * 0.2) / 500) * 500),
+      Math.max(500, Math.round((whole * 0.15) / 500) * 500),
     ),
     today_date: input.today,
     today_spoken: date(input.today),
