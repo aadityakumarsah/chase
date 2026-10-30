@@ -45,6 +45,9 @@ export default function Dashboard() {
             <Badge variant="secondary">
               {env.DEMO_MODE ? "Demo workspace" : "Live workspace"}
             </Badge>
+            <Link href="/lab" className="text-sm font-medium">
+              Voice lab
+            </Link>
             <LiveStatus />
           </div>
         </div>
@@ -64,7 +67,7 @@ export default function Dashboard() {
             </p>
           </div>
           <span className="text-xs text-stone-500">
-            Part 1 / 10 · Foundation
+            Part 4 / 10 · Voice lab
           </span>
         </div>
         <section className="grid gap-4 md:grid-cols-3">

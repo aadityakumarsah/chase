@@ -1,5 +1,15 @@
 import { expect, it, vi } from "vitest";
 import { redact, log } from "@/lib/log";
+it("preserves audit UUIDs while still hiding UUID credentials", () => {
+  const id = "12345678-1234-4234-8234-123456789abc";
+  expect(redact({ agentId: id, promptVersionId: id, token: id }, [])).toEqual({
+    agentId: id,
+    promptVersionId: id,
+    token: "[REDACTED]",
+  });
+  expect(redact({ message: id }, [id])).toEqual({ message: "[REDACTED]" });
+  expect(redact("a".repeat(64), [])).toBe("[REDACTED]");
+});
 it("redacts nested credentials, bearer headers, URL credentials and known secrets", () => {
   const value = {
     apiKey: "unit-test-key",

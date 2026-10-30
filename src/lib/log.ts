@@ -19,7 +19,15 @@ function cleanString(value: string, knownSecrets: string[]): string {
       /\b(?:postgres(?:ql)?|https?):\/\/[^\s/@]+:[^\s/@]+@[^\s]+/gi,
       REDACTED,
     )
-    .replace(/\b[A-Za-z0-9_+/-]{32,}={0,2}\b/g, REDACTED);
+    .replace(/\b[A-Za-z0-9_+/-]{32,}={0,2}\b/g, (candidate) =>
+      // Entity UUIDs are audit references. Secret fields and known secrets were
+      // already removed above, including credentials that happen to be UUIDs.
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        candidate,
+      )
+        ? candidate
+        : REDACTED,
+    );
 }
 export function redact(value: unknown, secrets?: string[]): unknown {
   const knownSecrets =
@@ -51,6 +59,8 @@ export function redact(value: unknown, secrets?: string[]): unknown {
 export const log = {
   info: (message: string, fields: unknown = {}) =>
     console.info(JSON.stringify(redact({ level: "info", message, fields }))),
+  warn: (message: string, fields: unknown = {}) =>
+    console.warn(JSON.stringify(redact({ level: "warn", message, fields }))),
   error: (message: string, fields: unknown = {}) =>
     console.error(JSON.stringify(redact({ level: "error", message, fields }))),
   debug: (message: string, fields: unknown = {}) => {

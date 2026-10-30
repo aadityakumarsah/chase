@@ -47,3 +47,13 @@ claude mcp add --transport http bolna https://mcp.bolna.ai/api/mcp --header "Aut
 ```
 
 Use the real credential only in your local secure setup; never paste it into this repository or chat.
+
+## Part 4 live verification — 30 October 2026
+
+- Both agents were created and GET-verified with active v1 prompts and the catalogued `simran_enhi_customer` voice. No phone numbers were returned by the account's phone-number list; omission of `from_phone_number` is supported but actual telephony remains unverified.
+- `pnpm bolna:sync --base-url https://YOUR-PUBLIC-ORIGIN` uses an explicit temporary origin without rewriting `.env`. Start the server with the same `APP_BASE_URL` so login/CSRF and web-call session requests agree. If the tunnel changes, restart the server and repeat sync.
+- `/lab` requires an admin login. Each session receives server-prepared context and an isolated call token. Browser tools are simulations; a session cannot use owner transfer. A synthetic-microphone browser check verified session minting, AI welcome, recognition of a user response and successful webhook delivery.
+- Live blocker: the documented bare `claude-sonnet-5` fails Bolna's LiteLLM routing. `anthropic/claude-sonnet-5` resolves that, but the execution then fails because Claude rejects temperature. The builder omits temperature for modern Claude; Bolna fills 0.1 back in. Agent creation and GET success therefore do not establish conversational success. Use an explicitly selected supported voice model or await a Bolna fix; never silently switch models.
+- Installed SDK declaration comments still mention `/web-call/freeswitch-session`; current official SDK documentation and successful live minting use `/web-call/session`.
+- `pnpm exec tsx scripts/verify-part4.ts` exercises local DB/HTTP boundaries without calling Bolna. `pnpm call:test --to +91XXXXXXXXXX --debtor demo` is an explicit real phone call and enforces the allowlist and conduct gate. Do not use it as an implicit smoke check.
+- Resolved for this demo by explicit user selection of `claude-haiku-4-5-20251001`. Both agents were resynced; a 39.7-second browser conversation completed with an honest AI response and debt disclosure only after identity confirmation. The Sonnet-specific provider limitation remains documented above.

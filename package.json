@@ -18,7 +18,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx scripts/seed.ts",
-    "bolna:sync": "tsx scripts/placeholder.ts bolna:sync",
+    "bolna:sync": "tsx scripts/bolna-sync.ts",
     "tunnel": "tsx scripts/tunnel.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -26,10 +26,14 @@
     "import:csv": "tsx scripts/import-csv.ts",
     "llm:ping": "tsx scripts/llm-ping.ts",
     "dossier:demo": "tsx scripts/dossier-demo.ts",
-    "eval:analysis": "vitest run --config vitest.eval.config.mts"
+    "eval:analysis": "vitest run --config vitest.eval.config.mts",
+    "bolna:voices": "tsx scripts/bolna-voices.ts",
+    "call:dry-run": "tsx scripts/call-dry-run.ts",
+    "call:test": "tsx scripts/test-call.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
+    "@bolna/web-call": "^3.0.1",
     "@next/env": "^16.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
