@@ -27,6 +27,8 @@ it("verifies signed sessions and rejects tampering, expiry, missing and rotated 
 });
 it("exempts exact public routes without prefix or extension bypasses", () => {
   for (const route of [
+    "/",
+    "/assets/chase-mascot.webp",
     "/login",
     "/login/session",
     "/pay/abc",
@@ -42,7 +44,10 @@ it("exempts exact public routes without prefix or extension bypasses", () => {
   ])
     expect(isPublicPath(route), route).toBe(true);
   for (const route of [
-    "/",
+    "/dashboard",
+    "/assets-private/file.png",
+    "/dashboard/private",
+    "/stage",
     "/api/events",
     "/api/tools-admin",
     "/login-admin",

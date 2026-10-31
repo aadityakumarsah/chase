@@ -1,21 +1,52 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import {
-  Banknote,
+  ArrowLeft,
+  ArrowUpRight,
+  AudioLines,
+  Check,
+  ChevronRight,
   Expand,
+  FileText,
   Keyboard,
-  ShieldAlert,
-  Sparkles,
+  MessageCircle,
+  Minimize,
+  Phone,
+  RotateCcw,
+  ShieldCheck,
+  TrendingUp,
+  Wallet,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { apiFetch, inr, sentence } from "@/lib/dashboard/client";
-import type { DashboardSummary, QueueItem } from "@/lib/dashboard/types";
-import { LiveCallPanel } from "./live-call-panel";
+import type {
+  DashboardSummary,
+  LiveCall,
+  QueueItem,
+} from "@/lib/dashboard/types";
+import { RelativeTime } from "@/components/relative-time";
+import { ChaseBrand } from "@/components/marketing/brand";
 import { useReadOnly } from "@/components/read-only-context";
+import styles from "./stage.module.css";
+
+const terminal = new Set([
+  "completed",
+  "call-disconnected",
+  "stopped",
+  "no-answer",
+  "busy",
+  "failed",
+  "canceled",
+  "cancelled",
+  "error",
+  "balance-low",
+]);
 
 export function StageView() {
   const readOnly = useReadOnly();
@@ -25,80 +56,151 @@ export function StageView() {
   const queue = useSWR<{ items: QueueItem[] }>("/api/queue", apiFetch, {
     refreshInterval: 1500,
   });
-  const [legend, setLegend] = useState(true);
+  const [legend, setLegend] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const busy = useRef(false);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      toast.info(
+        "Fullscreen isn’t available in this browser. Stage already uses the full workspace.",
+      );
+    }
+  }, []);
   useEffect(() => {
-    const timer = window.setTimeout(() => setLegend(false), 5000);
-    const keydown = async (event: KeyboardEvent) => {
+    const changed = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", changed);
+    return () => document.removeEventListener("fullscreenchange", changed);
+  }, []);
+
+  const runAction = useCallback(
+    async (key: string) => {
+      if (readOnly) return void toast.info("This demo is read-only");
+      if (busy.current) return;
+      let url: string;
+      let body: string | undefined;
+      let message: string;
+      if (key === "1") {
+        const debtor = queue.data?.items.find((item) => item.demoDebtor);
+        if (!debtor)
+          return void toast.error(
+            "Configure the demo recipient before calling",
+          );
+        url = "/api/calls/start";
+        body = JSON.stringify({ debtorId: debtor.debtorId });
+        message = "Demo call queued";
+      } else if (key === "2") {
+        const token = summary.data?.liveCall?.paymentToken;
+        if (!token)
+          return void toast.error("No active payment link to simulate");
+        url = `/api/pay/${token}/simulate`;
+        message = "Simulated payment recorded";
+      } else if (key === "3") {
+        url = "/api/brief/run";
+        body = JSON.stringify({
+          date: "today",
+          deliver: ["dashboard", "call"],
+        });
+        message = "Owner brief call queued";
+      } else if (key === "r") {
+        if (!window.confirm("Reset the fictional demo portfolio?")) return;
+        url = "/api/demo/reset";
+        message = "Demo portfolio restored";
+      } else return;
+      busy.current = true;
+      setPending(key);
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          ...(body
+            ? { headers: { "Content-Type": "application/json" }, body }
+            : {}),
+        });
+        const result = (await response.json().catch(() => null)) as {
+          status?: string;
+        } | null;
+        if (!response.ok || result?.status === "blocked")
+          throw new Error("unavailable");
+        toast.success(message);
+        void summary.mutate();
+        void queue.mutate();
+      } catch {
+        toast.error(
+          "Action unavailable. Check the workspace for configuration and contact rules.",
+        );
+      } finally {
+        busy.current = false;
+        setPending(null);
+      }
+    },
+    [readOnly, queue, summary],
+  );
+
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
       if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
+        event.repeat ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        (event.target instanceof HTMLElement &&
+          event.target.closest(
+            "input,textarea,select,button,a,[contenteditable=true]",
+          ))
       )
         return;
-      if (event.key.toLowerCase() === "f") {
-        if (document.fullscreenElement) return void document.exitFullscreen?.();
-        return void document.documentElement.requestFullscreen?.();
+      const key = event.key.toLowerCase();
+      if (key === "f") {
+        event.preventDefault();
+        void toggleFullscreen();
       }
-      if (readOnly && ["1", "2", "3", "r", "R"].includes(event.key))
-        return toast.info("This public demo is read-only");
-      if (event.key === "1") {
-        const debtor = queue.data?.items.find((item) => item.demoDebtor);
-        if (!debtor) return toast.error("Configure DEMO_DEBTOR_PHONE first");
-        const response = await fetch("/api/calls/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ debtorId: debtor.debtorId }),
-        });
-        return response.ok
-          ? toast.success("Demo call queued")
-          : toast.error("The contact gate blocked the demo call");
+      if (["1", "2", "3", "r"].includes(key)) {
+        event.preventDefault();
+        void runAction(key);
       }
-      if (event.key === "2") {
-        const token = summary.data?.liveCall?.paymentToken;
-        if (!token) return toast.error("No active payment link");
-        const response = await fetch(`/api/pay/${token}/simulate`, {
-          method: "POST",
-        });
-        return response.ok
-          ? toast.success("Demo payment recorded")
-          : toast.error("Payment simulation unavailable");
-      }
-      if (event.key === "3") {
-        const response = await fetch("/api/brief/run", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            date: "today",
-            deliver: ["dashboard", "call"],
-          }),
-        });
-        const body = (await response.json()) as { error?: string };
-        return response.ok
-          ? toast.success("Owner brief call queued")
-          : toast.error(body.error ?? "Owner brief call unavailable");
-      }
-      if (
-        event.key.toLowerCase() === "r" &&
-        window.confirm("Reset the fictional demo portfolio?")
-      ) {
-        const response = await fetch("/api/demo/reset", { method: "POST" });
-        return response.ok
-          ? toast.success("Demo portfolio restored")
-          : toast.error("Reset was refused by the safety checks");
-      }
+      if (key === "escape") setLegend(false);
+      if (key === "?") setLegend((value) => !value);
     };
     window.addEventListener("keydown", keydown);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("keydown", keydown);
-    };
-  }, [queue.data, readOnly, summary.data]);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [runAction, toggleFullscreen]);
+
   if (!summary.data || !queue.data)
     return (
-      <div className="grid min-h-screen place-items-center bg-background text-2xl">
-        Preparing stage…
-      </div>
+      <main className={styles.stage}>
+        <div className={styles.loading}>
+          <ChaseBrand />
+          <h1>
+            {summary.error || queue.error
+              ? "Stage couldn’t connect."
+              : "Getting the room ready."}
+          </h1>
+          <p>
+            {summary.error || queue.error
+              ? "Check your connection, then try again."
+              : "Bringing your conversations and accounts into view."}
+          </p>
+          <button
+            onClick={() => {
+              void summary.mutate();
+              void queue.mutate();
+            }}
+          >
+            Reconnect <RotateCcw size={15} />
+          </button>
+          <Link href="/dashboard">Back to workspace</Link>
+        </div>
+      </main>
     );
   const data = summary.data;
+  const live =
+    data.liveCall &&
+    !data.liveCall.endedAt &&
+    !terminal.has(data.liveCall.status);
   const gateSlot = data.latestGateBlock
     ? String(
         data.latestGateBlock.detail.scheduled ??
@@ -116,190 +218,424 @@ export function StageView() {
           minute: "2-digit",
         }).format(new Date(gateSlot))
       : null;
+  const reconnecting = summary.error || queue.error;
+
   return (
-    <main className="h-screen min-h-[720px] overflow-hidden bg-background p-7 text-[20px] text-foreground">
-      <header className="flex h-[7%] items-start justify-between">
-        <div>
-          <p className="text-[20px] font-semibold tracking-[.18em] text-primary uppercase">
-            Chase · Live collections
+    <MotionConfig reducedMotion="user">
+      <main className={styles.stage}>
+        <header className={styles.header}>
+          <div className={styles.identity}>
+            <ChaseBrand href="/dashboard" />
+            <span className={styles.headerDivider} />
+            <div>
+              <span>COLLECTIONS, IN FOCUS</span>
+              <strong>{data.business.name}</strong>
+            </div>
+          </div>
+          <div className={styles.headerActions}>
+            <span className={styles.connection}>
+              <i className={reconnecting ? styles.offlineDot : ""} />
+              {reconnecting ? "Reconnecting" : "Connected"}
+            </span>
+            {data.meta.demoMode && (
+              <span className={styles.mode}>Demo workspace</span>
+            )}
+            <Link href="/dashboard" className={styles.workspaceLink}>
+              <ArrowLeft size={14} />
+              Workspace
+            </Link>
+            <button
+              onClick={() => void toggleFullscreen()}
+              aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              title="Fullscreen (F)"
+            >
+              {fullscreen ? <Minimize size={17} /> : <Expand size={17} />}
+            </button>
+          </div>
+        </header>
+        <div className={styles.intro}>
+          <div>
+            <span className={styles.eyebrow}>
+              EVERY CONVERSATION. A STEP FORWARD.
+            </span>
+            <h1>
+              The follow-up, <span>in focus.</span>
+            </h1>
+          </div>
+          <p>
+            Bolna makes the call.
+            <br />
+            <strong>Chase gets you paid.</strong>
           </p>
-          <h1 className="mt-1 text-[30px] font-semibold">
-            {data.business.name}
-          </h1>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge className="px-3 py-1.5 text-[20px]">
-            <span className="mr-2 inline-block size-2 animate-pulse rounded-full bg-emerald-500" />
-            LIVE
-          </Badge>
-          {data.business.demoOverride && (
-            <Badge className="bg-amber-500/15 px-3 py-1.5 text-[20px] text-amber-500">
-              Demo override
-            </Badge>
-          )}
-          <ThemeToggle />
-        </div>
-      </header>
-      <div className="grid h-[85%] grid-cols-2 gap-6">
-        <section className="glass-panel overflow-hidden rounded-2xl border p-6">
-          <p className="mb-5 text-[20px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Live call
+        {data.business.demoOverride && (
+          <p className={styles.notice}>
+            <ShieldCheck size={14} /> Demo calling-window override is enabled
+            for allowlisted recipients.
           </p>
-          <LiveCallPanel call={data.liveCall} stage />
+        )}
+        <div className={styles.workspace}>
+          <section className={styles.conversationPanel}>
+            <div className={styles.panelHeading}>
+              <span>
+                <AudioLines size={15} />
+                {live
+                  ? "LIVE CONVERSATION"
+                  : data.liveCall
+                    ? "LATEST CONVERSATION"
+                    : "CONVERSATION"}
+              </span>
+              <span className={styles.purpose}>
+                {readOnly ? "READ-ONLY VIEW" : "VOICE · BOLNA"}
+              </span>
+            </div>
+            <StageConversation call={data.liveCall} live={Boolean(live)} />
+          </section>
+          <section className={styles.queuePanel}>
+            <div className={styles.panelHeading}>
+              <span>
+                <TrendingUp size={15} />
+                UP NEXT
+              </span>
+              <Link href="/debtors">
+                All accounts <ArrowUpRight size={13} />
+              </Link>
+            </div>
+            <div className={styles.queueIntro}>
+              <h2>
+                A reason behind
+                <br />
+                <span>every next call.</span>
+              </h2>
+              <span>
+                {queue.data.items.filter((item) => item.allowed).length}{" "}
+                eligible now
+              </span>
+            </div>
+            <StageQueue items={queue.data.items.slice(0, 5)} />
+            <div className={styles.queueFooter}>
+              <ShieldCheck size={14} />
+              Contact rules are checked again before dialing.
+            </div>
+          </section>
+        </div>
+        <section
+          className={styles.metrics}
+          aria-label="Today’s collection outcomes"
+        >
+          <div>
+            <span>
+              <Wallet size={15} />
+              COLLECTED TODAY
+            </span>
+            <strong>{inr(data.kpis.collectedTodayPaise)}</strong>
+            <small>
+              {Number(data.kpis.simulatedCollectedTodayPaise) > 0
+                ? `Includes ${inr(data.kpis.simulatedCollectedTodayPaise)} simulated`
+                : "Confirmed receipts"}
+            </small>
+          </div>
+          <div>
+            <span>
+              <Check size={15} />
+              PROMISED TODAY
+            </span>
+            <strong>{inr(data.kpis.promisedTodayPaise)}</strong>
+            <small>Recorded commitments</small>
+          </div>
+          <div>
+            <span>
+              <Phone size={15} />
+              CONVERSATIONS
+            </span>
+            <strong>
+              {data.kpis.callsConnected}
+              <em> / {data.kpis.callsAttempted}</em>
+            </strong>
+            <small>{data.kpis.connectRate}% connect rate today</small>
+          </div>
+          <div className={styles.gateMetric}>
+            <span>
+              <ShieldCheck size={15} />
+              CONDUCT BY CONSTRUCTION
+            </span>
+            <strong>
+              {data.latestGateBlock
+                ? sentence(data.latestGateBlock.rule)
+                : "Guardrails on."}
+            </strong>
+            <small>
+              {data.latestGateBlock
+                ? movedTo
+                  ? `Moved to ${movedTo} IST`
+                  : (data.latestGateBlock.shopName ?? "Decision recorded")
+                : `${data.kpis.blocked} blocked · ${data.kpis.optOuts} opt-outs honoured`}
+            </small>
+          </div>
         </section>
-        <div className="grid min-h-0 grid-rows-[1.4fr_.6fr] gap-6">
-          <section className="glass-panel min-h-0 overflow-hidden rounded-2xl border p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Chase Queue</h2>
-              <Badge variant="outline" className="text-[20px]">
-                Top 6
-              </Badge>
-            </div>
-            <StageQueue items={queue.data.items.slice(0, 6)} />
-          </section>
-          <section className="grid grid-cols-3 gap-4">
-            <div className="glass-panel rounded-2xl border p-5">
-              <Banknote className="text-emerald-500" />
-              <p className="mt-4 text-[20px] text-muted-foreground">
-                Collected today
-              </p>
-              <motion.p
-                key={data.kpis.collectedTodayPaise}
-                initial={{ scale: 1.12 }}
-                animate={{ scale: 1 }}
-                className="mt-1 text-4xl font-bold text-emerald-500 tabular-nums"
+        <footer className={styles.footer}>
+          <a href="https://sagarmathalabs.com" target="_blank" rel="noreferrer">
+            Backed by <strong>Sagarmatha Labs</strong>
+            <ArrowUpRight size={12} />
+          </a>
+          <span>LIVE DATA · ASIA / KOLKATA</span>
+          <button
+            aria-expanded={legend}
+            aria-controls="stage-controls"
+            onClick={() => setLegend(!legend)}
+          >
+            <Keyboard size={16} />
+            {legend ? "Hide controls" : "Stage controls"}
+          </button>
+        </footer>
+        {legend && (
+          <div
+            id="stage-controls"
+            className={styles.controls}
+            role="region"
+            aria-label="Stage controls"
+          >
+            <div>
+              <span>STAGE CONTROLS</span>
+              <button
+                onClick={() => setLegend(false)}
+                aria-label="Close stage controls"
               >
-                {inr(data.kpis.collectedTodayPaise)}
-              </motion.p>
-              {Number(data.kpis.simulatedCollectedTodayPaise) > 0 && (
-                <p className="mt-1 text-[20px] text-amber-500">
-                  Demo simulation included
-                </p>
-              )}
+                <X size={17} />
+              </button>
             </div>
-            <div className="glass-panel rounded-2xl border p-5">
-              <ShieldAlert className="text-rose-500" />
-              <p className="mt-4 text-[20px] text-muted-foreground">
-                Latest gate block
-              </p>
-              <p className="mt-1 line-clamp-2 text-[20px] font-semibold text-rose-500">
-                {data.latestGateBlock
-                  ? `${sentence(data.latestGateBlock.rule)} · ${movedTo ? `moved to ${movedTo}` : (data.latestGateBlock.shopName ?? "Account")}`
-                  : "No blocks today"}
-              </p>
-            </div>
-            <div className="glass-panel rounded-2xl border p-5">
-              <Sparkles className="text-primary" />
-              <p className="mt-4 text-[20px] text-muted-foreground">
-                AI routing
-              </p>
-              <p className="mt-1 text-[20px] font-semibold">
-                {data.meta.llmProvider}
-              </p>
-              <p className="text-[20px] text-muted-foreground">
-                {data.meta.agentMode} agent
-              </p>
-            </div>
-          </section>
+            <p>
+              {readOnly
+                ? "This workspace is read-only."
+                : "Calling actions use your configured recipients and contact safeguards."}
+            </p>
+            {!readOnly && (
+              <div className={styles.controlGrid}>
+                {[
+                  { key: "1", label: "Call demo recipient", icon: Phone },
+                  { key: "2", label: "Simulate payment", icon: Wallet },
+                  { key: "3", label: "Call owner with brief", icon: FileText },
+                  { key: "r", label: "Reset demo portfolio", icon: RotateCcw },
+                ].map((action) => (
+                  <button
+                    key={action.key}
+                    disabled={pending !== null}
+                    onClick={() => void runAction(action.key)}
+                  >
+                    <action.icon size={15} />
+                    <span>
+                      {pending === action.key ? "Working…" : action.label}
+                    </span>
+                    <kbd>{action.key.toUpperCase()}</kbd>
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              className={styles.fullscreenControl}
+              onClick={() => void toggleFullscreen()}
+            >
+              <Expand size={15} />
+              {fullscreen ? "Exit fullscreen" : "Fullscreen"}
+              <kbd>F</kbd>
+            </button>
+          </div>
+        )}
+      </main>
+    </MotionConfig>
+  );
+}
+
+function StageConversation({
+  call,
+  live,
+}: {
+  call: LiveCall | null;
+  live: boolean;
+}) {
+  const [tab, setTab] = useState<"conversation" | "messages">("conversation");
+  const transcript = (call?.transcript ?? "")
+    .split("\n")
+    .filter(Boolean)
+    .slice(-3);
+  return (
+    <div className={styles.callContent}>
+      <div className={styles.callIdentity}>
+        <div>
+          <span className={styles.eyebrow}>
+            {call ? call.contactName : "READY WHEN YOU ARE"}
+          </span>
+          <h2>{call?.shopName ?? "A conversation can change everything."}</h2>
+        </div>
+        <span className={styles.callStatus}>
+          {live && <i />}
+          {call ? sentence(call.status) : "Standby"}
+        </span>
+      </div>
+      <div className={`${styles.voiceVisual} ${live ? styles.speaking : ""}`}>
+        <div className={styles.voiceLine} aria-hidden="true">
+          {Array.from({ length: 27 }, (_, i) => (
+            <i
+              key={i}
+              style={{
+                height: `${12 + ((i * 23 + 7) % 57)}px`,
+                animationDelay: `${i * -0.08}s`,
+              }}
+            />
+          ))}
+        </div>
+        <Image
+          src="/assets/chase-mascot.webp"
+          width={155}
+          height={142}
+          alt="Chase voice assistant"
+        />
+        <div className={styles.voiceLine} aria-hidden="true">
+          {Array.from({ length: 27 }, (_, i) => (
+            <i
+              key={i}
+              style={{
+                height: `${12 + ((i * 19 + 13) % 57)}px`,
+                animationDelay: `${i * -0.07}s`,
+              }}
+            />
+          ))}
         </div>
       </div>
-      <footer className="flex h-[8%] items-end justify-between text-[20px] text-muted-foreground">
-        <p>Bolna makes the call. Chase gets you paid.</p>
+      <div
+        className={styles.callTabs}
+        role="group"
+        aria-label="Conversation view"
+      >
         <button
-          className="flex items-center gap-2"
-          onClick={() => setLegend(true)}
+          aria-pressed={tab === "conversation"}
+          onClick={() => setTab("conversation")}
         >
-          <Keyboard size={20} /> Shortcuts
+          <AudioLines size={14} />
+          Conversation
         </button>
-      </footer>
-      <AnimatePresence>
-        {legend && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="fixed right-8 bottom-8 flex items-center gap-5 rounded-xl border bg-card/95 px-5 py-3 text-[20px] shadow-2xl"
-          >
-            {!readOnly && (
-              <span>
-                <kbd>1</kbd> Call
-              </span>
-            )}
-            {!readOnly && (
-              <span>
-                <kbd>2</kbd> Pay
-              </span>
-            )}
-            {!readOnly && (
-              <span>
-                <kbd>3</kbd> Brief
-              </span>
-            )}
-            {!readOnly && (
-              <span>
-                <kbd>R</kbd> Reset
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <Expand size={20} /> F Fullscreen
-            </span>
-          </motion.div>
+        <button
+          aria-pressed={tab === "messages"}
+          onClick={() => setTab("messages")}
+        >
+          <MessageCircle size={14} />
+          Messages{" "}
+          {call?.messages.length ? <span>{call.messages.length}</span> : null}
+        </button>
+        {call?.startedAt && (
+          <RelativeTime value={call.startedAt} className={styles.callTime} />
         )}
-      </AnimatePresence>
-    </main>
+      </div>
+      <div className={styles.transcript}>
+        {tab === "conversation" ? (
+          transcript.length ? (
+            transcript.map((line, i) => {
+              const split = line.indexOf(":");
+              const speaker =
+                split > 0 && split < 20 ? line.slice(0, split) : null;
+              return (
+                <div key={`${i}-${line}`} className={styles.transcriptLine}>
+                  <span>{speaker ? sentence(speaker) : "Transcript"}</span>
+                  <p>{speaker ? line.slice(split + 1).trim() : line}</p>
+                </div>
+              );
+            })
+          ) : (
+            <div className={styles.emptyConversation}>
+              <span>
+                {live
+                  ? "The conversation is in progress."
+                  : "Thoughtful conversations start here."}
+              </span>
+              <p>
+                {live
+                  ? "The completed transcript will appear when it becomes available."
+                  : "The next call’s context, messages and outcome will appear here. Your queue is ready on the right."}
+              </p>
+            </div>
+          )
+        ) : call?.messages.length ? (
+          call.messages.slice(-3).map((message) => (
+            <div key={message.id} className={styles.transcriptLine}>
+              <span>
+                {message.provider === "console"
+                  ? "Demo console · simulated"
+                  : sentence(message.channel)}
+              </span>
+              <p>{message.body}</p>
+            </div>
+          ))
+        ) : (
+          <div className={styles.emptyConversation}>
+            <span>No messages for this conversation.</span>
+            <p>
+              Payment links and follow-ups sent during the call will appear
+              here. Console delivery is always labelled as simulated.
+            </p>
+          </div>
+        )}
+      </div>
+      <div className={styles.callFooter}>
+        <span>
+          <ShieldCheck size={14} />
+          {call
+            ? "Every decision has an audit trail."
+            : "Identity first. Conversation second."}
+        </span>
+        {call && (
+          <Link href={`/calls/${call.id}`}>
+            View call record <ArrowUpRight size={14} />
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }
 
 function StageQueue({ items }: { items: QueueItem[] }) {
-  const changed = items.find((item) => item.scoreDelta !== 0)?.debtorId;
   return (
-    <div className="overflow-hidden rounded-xl border bg-card/80">
-      <AnimatePresence initial={false}>
-        {items.map((item) => (
+    <div className={styles.queue}>
+      {items.length ? (
+        items.map((item) => (
           <motion.div
             layout
             key={item.debtorId}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ type: "spring", stiffness: 360, damping: 32 }}
-            className="grid grid-cols-[2.5rem_minmax(0,1fr)_6rem] items-center gap-3 border-b px-4 py-3 last:border-0"
+            transition={{ duration: 0.25 }}
+            className={styles.queueRow}
           >
-            <span className="text-[20px] font-semibold text-muted-foreground tabular-nums">
-              {item.rank}
+            <span className={styles.rank}>
+              {String(item.rank).padStart(2, "0")}
             </span>
-            <div className="min-w-0">
-              <p className="truncate text-[20px] font-semibold">
+            <div>
+              <Link href={`/debtors/${item.debtorId}`}>
                 {item.shopName}
+                <ChevronRight size={12} />
+              </Link>
+              <p>
+                {inr(item.outstandingPaise)}
+                <span>·</span>
+                {item.allowed ? "Ready to call" : "On hold"}
               </p>
-              {changed === item.debtorId && (
-                <p className="mt-1 truncate text-[20px] text-primary">
-                  {item.rationale}
-                </p>
-              )}
+              {item.scoreDelta !== 0 && <small>{item.rationale}</small>}
             </div>
-            <div className="text-right">
-              <span className="text-[24px] font-bold tabular-nums">
-                {item.score ?? "—"}
-              </span>
+            <div className={styles.score}>
+              <strong>{item.score ?? "—"}</strong>
+              <span>RATING</span>
               {item.scoreDelta !== 0 && (
-                <motion.span
-                  initial={{ scale: 1.5 }}
-                  animate={{ scale: 1 }}
-                  className={
-                    item.scoreDelta > 0
-                      ? "ml-1 text-[20px] text-emerald-500"
-                      : "ml-1 text-[20px] text-rose-500"
-                  }
-                >
+                <small>
                   {item.scoreDelta > 0 ? "+" : ""}
                   {item.scoreDelta}
-                </motion.span>
+                </small>
               )}
             </div>
           </motion.div>
-        ))}
-      </AnimatePresence>
+        ))
+      ) : (
+        <div className={styles.emptyConversation}>
+          <span>The queue is clear.</span>
+          <p>Imported accounts will appear here in priority order.</p>
+        </div>
+      )}
     </div>
   );
 }

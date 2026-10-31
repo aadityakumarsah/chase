@@ -20,7 +20,7 @@ export default async function Lab({
     .orderBy(debtors.shopName);
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
-      <Link href="/" className="text-sm text-muted-foreground">
+      <Link href="/dashboard" className="text-sm text-muted-foreground">
         ← Dashboard
       </Link>
       <div>

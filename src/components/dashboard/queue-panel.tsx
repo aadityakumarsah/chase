@@ -18,10 +18,10 @@ import { useReadOnly } from "@/components/read-only-context";
 
 const bandColor = {
   A: "bg-emerald-500",
-  B: "bg-sky-500",
-  C: "bg-amber-500",
-  D: "bg-rose-500",
-  X: "bg-slate-500",
+  B: "bg-emerald-500/70",
+  C: "bg-emerald-500/45",
+  D: "bg-muted-foreground/50",
+  X: "bg-muted-foreground/30",
 } as const;
 const plainReason = (reason: string) => {
   const [kind, value] = reason.split(":");
@@ -66,9 +66,14 @@ export function QueuePanel({
     }
   }
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
+    <div
+      className="overflow-x-auto rounded-xl border bg-card"
+      role="region"
+      aria-label="Account priority queue"
+      tabIndex={0}
+    >
       {!compact && (
-        <div className="grid grid-cols-[3rem_minmax(13rem,1.6fr)_8rem_5rem_minmax(10rem,1fr)_7rem] gap-3 border-b px-4 py-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+        <div className="grid min-w-[760px] grid-cols-[2rem_minmax(10rem,1.6fr)_7rem_4rem_minmax(8rem,1fr)_8rem] gap-3 border-b px-4 py-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
           <span>Rank</span>
           <span>Account</span>
           <span>Outstanding</span>
@@ -90,8 +95,8 @@ export function QueuePanel({
               transition={{ type: "spring", stiffness: 360, damping: 32 }}
               className={
                 compact
-                  ? "grid grid-cols-[2.5rem_1fr_5rem] items-center gap-3 border-b px-4 py-3 last:border-0"
-                  : "grid grid-cols-[3rem_minmax(13rem,1.6fr)_8rem_5rem_minmax(10rem,1fr)_7rem] items-center gap-3 border-b px-4 py-3.5 last:border-0 hover:bg-muted/30"
+                  ? "grid grid-cols-[2rem_minmax(0,1fr)_3rem] items-center gap-3 border-b px-4 py-3 last:border-0"
+                  : "grid min-w-[760px] grid-cols-[2rem_minmax(10rem,1.6fr)_7rem_4rem_minmax(8rem,1fr)_8rem] items-center gap-3 border-b px-4 py-4 last:border-0 hover:bg-muted/30"
               }
             >
               <span className="text-sm font-semibold tabular-nums text-muted-foreground">
@@ -133,7 +138,7 @@ export function QueuePanel({
               )}
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-base font-bold tabular-nums">
+                  <span className="text-sm font-medium tabular-nums">
                     {item.score ?? "—"}
                   </span>
                   {item.scoreDelta !== 0 && (
@@ -151,7 +156,7 @@ export function QueuePanel({
                     </motion.span>
                   )}
                 </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${item.score ?? 0}%` }}
@@ -203,11 +208,12 @@ export function QueuePanel({
                   </p>
                 </div>
               )}
-              {compact ? (
-                <p className="truncate text-right text-xs text-muted-foreground">
+              {compact && (
+                <p className="col-span-2 col-start-2 truncate text-xs text-muted-foreground">
                   {item.rationale}
                 </p>
-              ) : (
+              )}
+              {!compact && (
                 <div className="flex justify-end gap-1">
                   {!readOnly && (
                     <Tooltip>

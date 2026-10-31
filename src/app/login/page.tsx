@@ -1,7 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, AudioLines, LockKeyhole } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
+import { ChaseBrand } from "@/components/marketing/brand";
+import styles from "@/components/marketing/marketing.module.css";
+
 export default async function Login({
   searchParams,
 }: {
@@ -9,78 +11,62 @@ export default async function Login({
 }) {
   const { error } = await searchParams;
   return (
-    <main className="grid min-h-screen bg-stone-50 lg:grid-cols-2">
-      <section className="flex flex-col justify-between bg-[#172822] p-8 text-stone-50 lg:p-16">
-        <Link
-          href="/"
-          className="flex w-fit items-center gap-2 text-2xl font-semibold tracking-tight"
-        >
-          <AudioLines size={28} /> chase
-          <span className="text-emerald-400">.</span>
-        </Link>
-        <div className="py-16 lg:py-28">
-          <p className="mb-8 text-xs tracking-[.22em] text-emerald-200/70 uppercase">
-            A better way to follow up
-          </p>
-          <h1 className="max-w-lg text-5xl leading-[1.08] font-medium tracking-tight lg:text-6xl">
-            Bolna makes the call.
+    <main className={`${styles.site} ${styles.signIn}`}>
+      <section className={styles.signInStory}>
+        <ChaseBrand />
+        <div>
+          <Image
+            src="/assets/chase-mascot.webp"
+            width={300}
+            height={274}
+            alt="Chase mascot"
+            priority
+          />
+          <h1>
+            A little less chasing.
             <br />
-            <span className="text-emerald-300">
-              Chase gets
-              <br />
-              you paid.
-            </span>
+            <span>A lot more business.</span>
           </h1>
-          <p className="mt-8 max-w-sm text-base leading-7 text-stone-300">
-            Thoughtful conversations. Clear promises. A little less chasing, a
-            little more business.
+          <p>
+            Your conversations, commitments and collections.
+            <br />
+            All right where you left them.
           </p>
         </div>
-        <p className="text-xs text-stone-400">
-          Built for Indian businesses · Bolna × YC Symphony
-        </p>
+        <a href="https://sagarmathalabs.com" target="_blank" rel="noreferrer">
+          Backed by Sagarmatha Labs ↗
+        </a>
       </section>
-      <section className="flex items-center justify-center p-8 lg:p-20">
-        <div className="w-full max-w-sm">
-          <div className="mb-6 flex size-11 items-center justify-center rounded-xl border bg-white">
-            <LockKeyhole size={20} />
-          </div>
-          <h2 className="text-3xl font-semibold tracking-tight">
-            Welcome back.
-          </h2>
-          <p className="mt-3 mb-8 text-sm leading-6 text-muted-foreground">
-            Enter the admin or read-only demo passcode to open the workspace.
-          </p>
-          <form action="/login/session" method="post" className="space-y-5">
-            <div className="space-y-2">
-              <label htmlFor="passcode" className="text-sm font-medium">
-                Workspace passcode
-              </label>
-              <Input
-                id="passcode"
-                name="passcode"
-                type="password"
-                autoComplete="current-password"
-                required
-                maxLength={512}
-                className="h-11 bg-white"
-              />
-            </div>
+      <section className={styles.signInForm}>
+        <div>
+          <span className={styles.eyebrow}>YOUR CHASE WORKSPACE</span>
+          <h2>Good to have you back.</h2>
+          <p>Enter your admin or read-only demo passcode to continue.</p>
+          <form action="/login/session" method="post">
+            <label htmlFor="passcode">Workspace passcode</label>
+            <input
+              id="passcode"
+              name="passcode"
+              type="password"
+              autoComplete="current-password"
+              required
+              maxLength={512}
+              aria-describedby={error ? "login-error" : undefined}
+            />
             {error && (
-              <p role="alert" className="text-sm text-red-700">
+              <p id="login-error" role="alert">
                 That passcode wasn’t accepted. Please try again.
               </p>
             )}
-            <Button
-              type="submit"
-              className="h-11 w-full bg-[#172822] text-white"
-            >
-              Open workspace <ArrowUpRight size={16} />
-            </Button>
+            <button type="submit" className={styles.primaryButton}>
+              Open workspace <ArrowRight size={16} />
+            </button>
           </form>
-          <p className="mt-8 text-xs leading-5 text-muted-foreground">
-            Your session expires after 8 hours.
-          </p>
+          <p>Secure access. Your session expires after 8 hours.</p>
+          <Link href="/">
+            <ArrowLeft size={14} />
+            Back to Chase <ArrowUpRight size={13} />
+          </Link>
         </div>
       </section>
     </main>

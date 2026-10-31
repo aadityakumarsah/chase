@@ -42,7 +42,10 @@ Postgres + Drizzle ORM and drizzle-kit migrations; postgres-js driver. Zod at en
 
 ## Folder map
 
-- src/app/(dashboard)/ — protected dashboard pages.
+- src/app/page.tsx — public Chase product homepage.
+- src/app/(dashboard)/ — protected dashboard pages; overview at /dashboard.
+- src/components/marketing/ — public landing page, brand and scoped visual styles.
+- public/assets/ — optimized copies of the supplied Chase brand assets.
 - src/app/login/ — passcode login and signed-session POST.
 - src/app/pay/[token]/ — public payment page; inert until payment implementation.
 - src/app/api/ — health, event feed and later authenticated tools/webhooks.

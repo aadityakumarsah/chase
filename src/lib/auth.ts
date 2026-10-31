@@ -78,6 +78,7 @@ export function isPublicPath(path: string): boolean {
   ];
   return (
     roots.some((root) => path === root || path.startsWith(`${root}/`)) ||
+    path === "/" ||
     path === "/api/health" ||
     path.startsWith("/_next/") ||
     ["/favicon.ico", "/robots.txt", "/sitemap.xml"].includes(path) ||

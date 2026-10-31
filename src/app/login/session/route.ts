@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
       new URL("/login?error=invalid", request.url),
       303,
     );
-  const response = NextResponse.redirect(new URL("/", request.url), 303);
+  const response = NextResponse.redirect(
+    new URL("/dashboard", request.url),
+    303,
+  );
   const secret = isAdmin ? env.ADMIN_PASSCODE! : env.DEMO_VIEW_PASSCODE!;
   response.cookies.set(isAdmin ? "admin" : "demo_view", createSession(secret), {
     httpOnly: true,

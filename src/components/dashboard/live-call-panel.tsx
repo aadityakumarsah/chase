@@ -72,11 +72,11 @@ export function LiveCallPanel({
 }) {
   if (!call)
     return (
-      <div className="grid min-h-80 place-items-center rounded-xl border border-dashed bg-card/50 p-8 text-center">
+      <div className="grid min-h-64 place-items-center rounded-lg bg-muted/30 p-8 text-center">
         <div>
           <PhoneCall className="mx-auto mb-3 text-muted-foreground" />
           <p className={stage ? "text-[24px] font-medium" : "font-medium"}>
-            No call in focus
+            Ready for the next conversation
           </p>
           <p
             className={
@@ -294,9 +294,8 @@ export function LiveCallPanel({
 
 export function PhoneMockup({ call }: { call: LiveCall | null }) {
   return (
-    <div className="mx-auto w-full max-w-[310px] rounded-[2rem] border-4 border-slate-700 bg-[#efeae2] p-3 text-slate-900 shadow-2xl dark:border-slate-600">
-      <div className="mx-auto mb-3 h-4 w-24 rounded-full bg-slate-800" />
-      <div className="rounded-xl bg-[#075e54] px-3 py-2 text-xs font-semibold text-white">
+    <div className="mx-auto w-full rounded-xl border bg-muted/20 p-3 text-foreground">
+      <div className="rounded-lg border-b px-3 py-3 text-xs font-medium">
         {call?.shopName ?? "WhatsApp preview"}
       </div>
       <div className="mt-3 h-56 space-y-2 overflow-auto">
@@ -304,10 +303,10 @@ export function PhoneMockup({ call }: { call: LiveCall | null }) {
           call.messages.slice(-6).map((message) => (
             <div
               key={message.id}
-              className={`max-w-[88%] rounded-lg px-3 py-2 text-[11px] leading-4 shadow-sm ${message.direction === "out" ? "ml-auto bg-[#d9fdd3]" : "bg-white"}`}
+              className={`max-w-[88%] rounded-lg border px-3 py-2 text-xs leading-5 ${message.direction === "out" ? "ml-auto bg-muted" : "bg-card"}`}
             >
               <p className="whitespace-pre-wrap break-words">{message.body}</p>
-              <p className="mt-1 text-right text-[8px] text-slate-500">
+              <p className="mt-1 text-right text-[10px] text-muted-foreground">
                 {message.provider === "console"
                   ? "Demo console"
                   : message.status}
@@ -315,7 +314,7 @@ export function PhoneMockup({ call }: { call: LiveCall | null }) {
             </div>
           ))
         ) : (
-          <p className="pt-20 text-center text-xs text-slate-500">
+          <p className="pt-20 text-center text-xs text-muted-foreground">
             Payment links and messages appear here.
           </p>
         )}

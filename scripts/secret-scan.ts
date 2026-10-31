@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const available = spawnSync("gitleaks", ["version"], { stdio: "ignore" });
 if (available.status === 0) {
@@ -28,6 +28,8 @@ const patterns = [
 ];
 const findings: string[] = [];
 for (const file of listed.stdout.split("\0").filter(Boolean)) {
+  // The index can still list a route that was moved in the working tree.
+  if (!existsSync(file)) continue;
   const bytes = readFileSync(file);
   if (bytes.length > 2_000_000 || bytes.includes(0)) continue;
   const text = bytes.toString("utf8");

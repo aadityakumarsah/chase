@@ -73,7 +73,7 @@ async function main() {
     );
     if (gif.status !== 0) throw new Error("GIF encoding failed");
     for (const [route, filename] of [
-      ["/", "command-center.png"],
+      ["/dashboard", "command-center.png"],
       ["/prompt-prs", "prompt-prs.png"],
     ] as const) {
       await page.goto(`${base}${route}`, {
