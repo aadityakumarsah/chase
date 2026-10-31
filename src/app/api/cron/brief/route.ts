@@ -4,12 +4,15 @@ import { verifyCronAuthorization } from "@/lib/brief/cron";
 import { sweepPromises } from "@/lib/chase/sweep";
 import { getEnv } from "@/lib/env";
 import { runNightlyPromptPrJob } from "@/lib/promptprs/nightly";
+import { publicRateLimit } from "@/lib/public-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
+  const limited = publicRateLimit(request, "brief-cron", 10);
+  if (limited) return limited;
   const env = getEnv();
   if (
     !verifyCronAuthorization(

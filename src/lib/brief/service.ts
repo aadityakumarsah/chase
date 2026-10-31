@@ -22,6 +22,27 @@ const runSchema = z.object({
   businessId: z.uuid().optional(),
 });
 
+export async function previewDailyBrief(
+  input: {
+    date?: string;
+    businessId?: string;
+  } = {},
+) {
+  const date =
+    !input.date || input.date === "today"
+      ? istDay(new Date())
+      : z.iso.date().parse(input.date);
+  const metrics = await getBriefMetrics({ date, businessId: input.businessId });
+  const summaries = await ownerSummariesForDay(metrics);
+  const generated = await generateBriefNarrative(metrics, summaries);
+  const scripts = buildBriefScripts(
+    metrics,
+    generated.narrative,
+    await ownerName(metrics.businessId),
+  );
+  return { metrics, narrative: generated.narrative, scripts };
+}
+
 export async function runDailyBrief(input: z.input<typeof runSchema> = {}) {
   const parsed = runSchema.parse(input);
   const date =

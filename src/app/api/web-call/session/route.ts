@@ -10,12 +10,15 @@ import { compileDossier, toCallVariables } from "@/lib/dossier";
 import { getBolnaClient } from "@/lib/bolna/client";
 import { getEnv } from "@/lib/env";
 import { emitEvent } from "@/lib/events";
+import { publicRateLimit } from "@/lib/public-rate-limit";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 const input = z
   .object({ user_data: z.object({ debtor_id: z.uuid() }).strict() })
   .strict();
 export async function POST(request: NextRequest) {
+  const limited = publicRateLimit(request, "web-call-session", 20);
+  if (limited) return limited;
   const status = labAuthStatus(request, true);
   if (status !== 200)
     return NextResponse.json(

@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
   if (!origin || origin !== new URL(env.APP_BASE_URL).origin)
     return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
-  if (!env.ADMIN_PASSCODE)
+  if (!env.ADMIN_PASSCODE && !env.DEMO_VIEW_PASSCODE)
     return NextResponse.json(
       { error: "Dashboard authentication is not configured" },
       { status: 503 },
@@ -40,18 +40,34 @@ export async function POST(request: NextRequest) {
       303,
     );
   }
-  if (!matchesPasscode(passcode, env.ADMIN_PASSCODE))
+  const isAdmin = Boolean(
+    env.ADMIN_PASSCODE && matchesPasscode(passcode, env.ADMIN_PASSCODE),
+  );
+  const isViewer = Boolean(
+    !isAdmin &&
+    env.DEMO_VIEW_PASSCODE &&
+    matchesPasscode(passcode, env.DEMO_VIEW_PASSCODE),
+  );
+  if (!isAdmin && !isViewer)
     return NextResponse.redirect(
       new URL("/login?error=invalid", request.url),
       303,
     );
   const response = NextResponse.redirect(new URL("/", request.url), 303);
-  response.cookies.set("admin", createSession(env.ADMIN_PASSCODE), {
+  const secret = isAdmin ? env.ADMIN_PASSCODE! : env.DEMO_VIEW_PASSCODE!;
+  response.cookies.set(isAdmin ? "admin" : "demo_view", createSession(secret), {
     httpOnly: true,
     secure: new URL(env.APP_BASE_URL).protocol === "https:",
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_SECONDS,
+  });
+  response.cookies.set(isAdmin ? "demo_view" : "admin", "", {
+    httpOnly: true,
+    secure: new URL(env.APP_BASE_URL).protocol === "https:",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
   });
   response.headers.set("Cache-Control", "no-store");
   return response;

@@ -5,9 +5,17 @@ import { getDb } from "@/lib/db";
 import { paymentLinks } from "@/lib/db/schema";
 import { razorpayPaidSchema, validSignature } from "@/lib/payments/razorpay";
 import { recordPayment } from "@/lib/payments/service";
+import { publicRateLimit } from "@/lib/public-rate-limit";
+const MAX_BODY_BYTES = 256 * 1024;
 export async function POST(request: NextRequest) {
+  const limited = publicRateLimit(request, "razorpay-webhook", 120);
+  if (limited) return limited;
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES)
+    return NextResponse.json({ ok: false }, { status: 413 });
   const raw = await request.text(),
     env = getEnv();
+  if (Buffer.byteLength(raw) > MAX_BODY_BYTES)
+    return NextResponse.json({ ok: false }, { status: 413 });
   if (
     !validSignature(
       raw,
@@ -16,7 +24,13 @@ export async function POST(request: NextRequest) {
     )
   )
     return NextResponse.json({ ok: false }, { status: 401 });
-  const parsed = razorpayPaidSchema.safeParse(JSON.parse(raw));
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return NextResponse.json({ ok: false }, { status: 400 });
+  }
+  const parsed = razorpayPaidSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ ok: true, ignored: true });
   const entity = parsed.data.payload.payment_link.entity,
     payment = parsed.data.payload.payment.entity;

@@ -5,12 +5,15 @@ import {
   chatCompletionRequestSchema,
   createProxyStream,
 } from "@/lib/proxy";
+import { publicRateLimit } from "@/lib/public-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
+  const limited = publicRateLimit(request, "llm-proxy", 120);
+  if (limited) return limited;
   const env = getEnv();
   if (
     !authorizeProxy(request.headers.get("authorization"), env.CHASE_PROXY_KEY)

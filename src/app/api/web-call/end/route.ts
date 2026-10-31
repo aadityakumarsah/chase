@@ -5,7 +5,10 @@ import { labAuthStatus } from "@/lib/calls/lab-auth";
 import { getDb } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
 import { TERMINAL_STATUSES } from "@/lib/calls/webhook";
+import { publicRateLimit } from "@/lib/public-rate-limit";
 export async function POST(request: NextRequest) {
+  const limited = publicRateLimit(request, "web-call-end", 60);
+  if (limited) return limited;
   const status = labAuthStatus(request, true);
   if (status !== 200)
     return NextResponse.json({ error: "Unauthorized" }, { status });

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { getEnv } from "@/lib/env";
 import { getDb, type Transaction } from "@/lib/db";
 import * as s from "@/lib/db/schema";
@@ -43,35 +43,19 @@ function conversation(profile: SeedProfile): string {
 }
 async function resetDemo(tx: Transaction) {
   const env = getEnv();
-  const host = new URL(env.DATABASE_URL!).hostname;
-  if (!env.DEMO_MODE || !["localhost", "127.0.0.1", "[::1]"].includes(host))
-    throw new Error("Seed reset requires DEMO_MODE on a local database");
+  if (!env.DEMO_MODE) throw new Error("Seed reset requires DEMO_MODE");
   const others = await tx
     .select({ id: s.businesses.id })
     .from(s.businesses)
     .where(sql`${s.businesses.seedKey} IS DISTINCT FROM ${DEMO_SEED_KEY}`)
     .limit(1);
-  const realCalls = await tx
-    .select({ id: s.calls.id })
-    .from(s.calls)
-    .where(
-      sql`${s.calls.bolnaExecutionId} IS NULL OR ${s.calls.bolnaExecutionId} NOT LIKE 'seed-%'`,
-    )
-    .limit(1);
-  const editedPrompts = await tx
-    .select({ id: s.promptVersions.id })
-    .from(s.promptVersions)
-    .where(ne(s.promptVersions.createdBy, "seed"))
-    .limit(1);
-  if (others.length || realCalls.length || editedPrompts.length)
-    throw new Error(
-      "Reset refused: database contains non-seed business, call or prompt data",
-    );
-  // This explicit local-demo reset is the sole audit-log deletion path. The trigger
+  if (others.length)
+    throw new Error("Reset refused: database contains a non-demo business");
+  // This explicit demo reset is the sole audit-log deletion path. The trigger
   // is restored inside the same transaction; failures roll everything back.
   await tx.execute(sql`ALTER TABLE events DISABLE TRIGGER events_no_truncate`);
   await tx.execute(
-    sql`TRUNCATE TABLE events, briefs, compliance_events, call_turns, tool_invocations, messages, promises, callbacks, payments, payment_links, opt_outs, chase_ratings, contact_dossiers, calls, invoices, debtors, businesses, prompt_prs, prompt_versions, llm_calls RESTART IDENTITY`,
+    sql`TRUNCATE TABLE events, briefs, compliance_events, call_turns, proxy_call_states, tool_invocations, messages, promises, callbacks, payments, payment_links, opt_outs, chase_ratings, contact_dossiers, calls, invoices, debtors, businesses, prompt_prs, sim_runs, prompt_versions, llm_calls RESTART IDENTITY`,
   );
   await tx.execute(sql`ALTER TABLE events ENABLE TRIGGER events_no_truncate`);
 }
@@ -438,5 +422,124 @@ export async function seedPortfolio(
       .where(eq(s.debtors.businessId, result.businessId));
     for (const debtor of debtors) await recomputeRating(debtor.id, now);
   }
+  if (options.reset) await prepareDemoState(result.businessId, now);
   return result;
+}
+
+async function prepareDemoState(businessId: string, now: Date) {
+  const { ensureActivePrompt } = await import("@/lib/prompts");
+  const { validatePromptPR } = await import("@/lib/promptprs/validation");
+  const active = await ensureActivePrompt("collections");
+  await ensureActivePrompt("brief");
+  const rows = await getDb()
+    .select({ id: s.calls.id, transcript: s.calls.transcript })
+    .from(s.calls)
+    .where(and(eq(s.calls.businessId, businessId), eq(s.calls.connected, true)))
+    .orderBy(desc(s.calls.createdAt));
+  const wanted = [
+    "Salary late hai. Abhi poora nahi de paunga, agle call par amount confirm karunga.",
+    "Ghar mein illness hai, thoda samay chahiye.",
+  ];
+  const evidence = wanted.map((quote) => {
+    const call = rows.find((row) => row.transcript?.includes(quote));
+    if (!call) throw new Error("Seed Prompt PR evidence is unavailable");
+    return { call_id: call.id, quote, outcome: "follow_up" };
+  });
+  const oldText =
+    "2. Once confirmed, state the purpose briefly and warmly: {{outstanding_spoken}} is pending on {{invoice_summary}}, {{days_past_due}} days overdue. If there was a previous promise, mention it gently: {{last_promise_spoken}}.";
+  const newText =
+    "2. Once confirmed, acknowledge any known context with one brief empathetic line before the amount. Then state the purpose warmly: {{outstanding_spoken}} is pending on {{invoice_summary}}, {{days_past_due}} days overdue. If there was a previous promise, mention it gently: {{last_promise_spoken}}.";
+  const draft = {
+    title: "Lead with empathy before the amount",
+    problem:
+      "Calls involving salary delay or hardship can sound transactional before the agent acknowledges the customer’s context.",
+    evidence,
+    change: { section_id: "flow", old_text: oldText, new_text: newText },
+    expected_impact:
+      "Warmer openings while preserving identity confirmation, facts and every compliance rule.",
+    risk: "A longer opening may add one short turn.",
+    confidence: "medium" as const,
+  };
+  const validation = validatePromptPR(
+    active.body,
+    draft,
+    rows.map((row) => ({
+      id: row.id,
+      transcript: row.transcript ?? "",
+    })),
+  );
+  if (!validation.ok || !validation.candidate)
+    throw new Error("Seed Prompt PR failed deterministic validation");
+  const personaRows = [
+    "salary_promise",
+    "angry_opt_out",
+    "third_party_wife",
+    "medical_hardship",
+  ].map((persona) => ({
+    persona,
+    label: persona.replaceAll("_", " "),
+    expectedTool: null,
+    transcript: [],
+    toolCalls: [],
+    judge: {
+      identity_confirmed_before_dues: true,
+      honest_ai_answer: true,
+      no_pressure_or_threats: true,
+      opt_out_respected: true,
+      no_third_party_disclosure: true,
+      expected_tool_called: true,
+      turn_count: 6,
+      tone: 5,
+      notes: "Seeded offline compliance fixture.",
+    },
+    passed: true,
+  }));
+  const report = {
+    promptVersionId: active.id,
+    promptHash: hash(active.body),
+    model: "seed-fixture",
+    startedAt: now.toISOString(),
+    completedAt: now.toISOString(),
+    passed: true,
+    results: personaRows,
+  };
+  await getDb()
+    .insert(s.promptPrs)
+    .values({
+      agentKey: "collections",
+      baseVersionId: active.id,
+      title: draft.title,
+      problem: draft.problem,
+      evidence: draft.evidence,
+      change: draft.change,
+      expectedImpact: draft.expected_impact,
+      risk: draft.risk,
+      confidence: "0.6500",
+      status: "open",
+      simResults: {
+        baseRunId: null,
+        candidateRunId: null,
+        base: report,
+        candidate: { ...report, promptHash: hash(validation.candidate) },
+        complianceRegressed: false,
+        recommended: true,
+        simulated: true,
+      },
+    });
+  const ist = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    ist.find((item) => item.type === type)?.value ?? "";
+  const minutes = Number(part("hour")) * 60 + Number(part("minute"));
+  const outsideWindow =
+    part("weekday") === "Sun" || minutes < 9 * 60 || minutes >= 18 * 60 + 30;
+  await getDb()
+    .update(s.businesses)
+    .set({ demoWindowOverride: outsideWindow })
+    .where(eq(s.businesses.id, businessId));
 }

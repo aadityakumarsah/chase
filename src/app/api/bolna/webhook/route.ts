@@ -4,6 +4,7 @@ import { getEnv } from "@/lib/env";
 import { ingestExecution, verifyWebhookSecret } from "@/lib/calls/webhook";
 import { emitEvent } from "@/lib/events";
 import { log } from "@/lib/log";
+import { publicRateLimit } from "@/lib/public-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,8 @@ const MAX_BODY_BYTES = 512 * 1024;
  * documented by Bolna but are never treated as a credential.
  */
 export async function POST(request: NextRequest) {
+  const limited = publicRateLimit(request, "bolna-webhook", 120);
+  if (limited) return limited;
   const env = getEnv();
   const presented =
     request.headers.get("x-chase-webhook-secret") ??

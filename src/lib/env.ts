@@ -30,6 +30,7 @@ export const envSchema = z.object({
   DEMO_MODE: bool.default(true),
   DEFAULT_TZ: z.literal("Asia/Kolkata").default("Asia/Kolkata"),
   ADMIN_PASSCODE: secret,
+  DEMO_VIEW_PASSCODE: secret,
   CHASE_TOOL_SECRET: secret,
   CHASE_WEBHOOK_SECRET: secret,
   CHASE_PROXY_KEY: secret,
@@ -219,6 +220,7 @@ export function configReport(
     database: check(["DATABASE_URL"]),
     security: check([
       "ADMIN_PASSCODE",
+      "DEMO_VIEW_PASSCODE",
       "CHASE_TOOL_SECRET",
       "CHASE_WEBHOOK_SECRET",
       "CHASE_PROXY_KEY",

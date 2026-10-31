@@ -32,6 +32,7 @@ import type {
   BriefMetrics,
   BriefNarrative,
 } from "@/lib/brief/types";
+import { useReadOnly } from "@/components/read-only-context";
 
 type Brief = {
   id: string;
@@ -48,6 +49,7 @@ type Data = {
 };
 
 export function BriefPage({ date }: { date?: string }) {
+  const readOnly = useReadOnly();
   const endpoint = date ? `/api/brief/${date}` : "/api/brief";
   const { data, mutate } = useSWR<Data>(endpoint, apiFetch, {
     refreshInterval: 10_000,
@@ -98,13 +100,15 @@ export function BriefPage({ date }: { date?: string }) {
               Generate today’s brief from deterministic ledger facts and guarded
               Claude narrative.
             </p>
-            <Button
-              className="mt-5"
-              disabled={running}
-              onClick={() => void run(["dashboard"])}
-            >
-              {running ? "Generating…" : "Generate today’s brief"}
-            </Button>
+            {!readOnly && (
+              <Button
+                className="mt-5"
+                disabled={running}
+                onClick={() => void run(["dashboard"])}
+              >
+                {running ? "Generating…" : "Generate today’s brief"}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </main>
@@ -134,14 +138,14 @@ export function BriefPage({ date }: { date?: string }) {
             <Button asChild variant="outline">
               <Link href={`/calls/${brief.callId}`}>View owner call</Link>
             </Button>
-          ) : (
+          ) : !readOnly ? (
             <Button
               disabled={running}
               onClick={() => void run(["dashboard", "call"])}
             >
               <PhoneCall /> Call owner
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -375,6 +379,7 @@ function OwnerAccount({
 }: {
   item: BriefNarrative["needs_owner"][number];
 }) {
+  const readOnly = useReadOnly();
   const [calling, setCalling] = useState(false);
   const call = async () => {
     setCalling(true);
@@ -401,14 +406,16 @@ function OwnerAccount({
           {sentence(item.suggested_action)}
         </p>
       </div>
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={calling}
-        onClick={() => void call()}
-      >
-        <PhoneCall /> Call now
-      </Button>
+      {!readOnly && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={calling}
+          onClick={() => void call()}
+        >
+          <PhoneCall /> Call now
+        </Button>
+      )}
     </div>
   );
 }

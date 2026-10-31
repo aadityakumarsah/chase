@@ -6,7 +6,11 @@ import { secureEqual } from "@/lib/tools/validators";
 import { getDb } from "@/lib/db";
 import { debtors, messages, optOuts } from "@/lib/db/schema";
 import { normalisePhone } from "@/lib/phone";
+import { publicRateLimit } from "@/lib/public-rate-limit";
+const MAX_BODY_BYTES = 512 * 1024;
 export function GET(request: NextRequest) {
+  const limited = publicRateLimit(request, "whatsapp-verify", 30);
+  if (limited) return limited;
   const env = getEnv(),
     q = request.nextUrl.searchParams;
   if (
@@ -18,9 +22,15 @@ export function GET(request: NextRequest) {
   return NextResponse.json({ ok: false }, { status: 403 });
 }
 export async function POST(request: NextRequest) {
+  const limited = publicRateLimit(request, "whatsapp-webhook", 120);
+  if (limited) return limited;
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES)
+    return NextResponse.json({ ok: false }, { status: 413 });
   const raw = await request.text(),
     env = getEnv(),
     signature = request.headers.get("x-hub-signature-256");
+  if (Buffer.byteLength(raw) > MAX_BODY_BYTES)
+    return NextResponse.json({ ok: false }, { status: 413 });
   if (env.META_APP_SECRET) {
     const expected =
       "sha256=" +

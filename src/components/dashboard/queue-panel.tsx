@@ -14,6 +14,7 @@ import {
 import { inr, sentence } from "@/lib/dashboard/client";
 import type { QueueItem } from "@/lib/dashboard/types";
 import { RelativeTime } from "@/components/relative-time";
+import { useReadOnly } from "@/components/read-only-context";
 
 const bandColor = {
   A: "bg-emerald-500",
@@ -39,6 +40,7 @@ export function QueuePanel({
   items: QueueItem[];
   compact?: boolean;
 }) {
+  const readOnly = useReadOnly();
   const [busy, setBusy] = useState<string | null>(null);
   async function callNow(debtorId: string) {
     setBusy(debtorId);
@@ -207,36 +209,40 @@ export function QueuePanel({
                 </p>
               ) : (
                 <div className="flex justify-end gap-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          disabled={!item.allowed || busy === item.debtorId}
-                          onClick={() => void callNow(item.debtorId)}
-                          aria-label="Call now"
-                        >
-                          <Phone size={15} />
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {item.allowed
-                        ? "Call now"
-                        : blocked
-                            .map((rule) => `${rule.id}: ${rule.detail}`)
-                            .join(" · ")}
-                    </TooltipContent>
-                  </Tooltip>
-                  <Button size="icon" variant="ghost" asChild>
-                    <Link
-                      href={`/lab?debtorId=${item.debtorId}`}
-                      title="Web test"
-                    >
-                      <ExternalLink size={15} />
-                    </Link>
-                  </Button>
+                  {!readOnly && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            disabled={!item.allowed || busy === item.debtorId}
+                            onClick={() => void callNow(item.debtorId)}
+                            aria-label="Call now"
+                          >
+                            <Phone size={15} />
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {item.allowed
+                          ? "Call now"
+                          : blocked
+                              .map((rule) => `${rule.id}: ${rule.detail}`)
+                              .join(" · ")}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {!readOnly && (
+                    <Button size="icon" variant="ghost" asChild>
+                      <Link
+                        href={`/lab?debtorId=${item.debtorId}`}
+                        title="Web test"
+                      >
+                        <ExternalLink size={15} />
+                      </Link>
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" asChild>
                     <Link href={`/debtors/${item.debtorId}`}>View</Link>
                   </Button>

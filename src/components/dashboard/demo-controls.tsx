@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/dashboard/client";
 import type { DashboardSummary } from "@/lib/dashboard/types";
+import { useReadOnly } from "@/components/read-only-context";
 
 export function DemoControls() {
+  const readOnly = useReadOnly();
   const { data, mutate } = useSWR<DashboardSummary>(
     "/api/dashboard/summary",
     apiFetch,
@@ -34,6 +36,14 @@ export function DemoControls() {
 
   const token = data?.liveCall?.paymentToken;
   const override = data?.business.demoOverride ?? false;
+  if (readOnly)
+    return (
+      <Card className="border-dashed shadow-none">
+        <CardContent className="py-8 text-sm text-muted-foreground">
+          Demo controls are hidden in the public read-only workspace.
+        </CardContent>
+      </Card>
+    );
   return (
     <Card className="shadow-none">
       <CardHeader className="flex-row items-start justify-between">

@@ -59,5 +59,6 @@ describe("environment", () => {
     expect(report.llm.missing).toEqual(["LLM_BASE_URL"]);
     expect(JSON.stringify(report)).not.toContain("unit-secret-value");
     expect(JSON.stringify(report)).not.toContain("unit-llm-value");
+    expect(report.security.missing).toContain("DEMO_VIEW_PASSCODE");
   });
 });

@@ -49,12 +49,12 @@ export default async function Login({
             Welcome back.
           </h2>
           <p className="mt-3 mb-8 text-sm leading-6 text-muted-foreground">
-            Enter your admin passcode to open your workspace.
+            Enter the admin or read-only demo passcode to open the workspace.
           </p>
           <form action="/login/session" method="post" className="space-y-5">
             <div className="space-y-2">
               <label htmlFor="passcode" className="text-sm font-medium">
-                Admin passcode
+                Workspace passcode
               </label>
               <Input
                 id="passcode"

@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { previewCall } from "@/lib/calls/dispatch";
 import { labAuthStatus } from "@/lib/calls/lab-auth";
+import { publicRateLimit } from "@/lib/public-rate-limit";
 export async function GET(request: NextRequest) {
+  const limited = publicRateLimit(request, "web-call-context", 60);
+  if (limited) return limited;
   const status = labAuthStatus(request);
   if (status !== 200)
     return NextResponse.json({ error: "Unauthorized" }, { status });

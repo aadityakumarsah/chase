@@ -1,9 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getEnv } from "@/lib/env";
 import { pingDb } from "@/lib/db";
 import { healthSchema, type Health } from "@/lib/health";
+import { publicRateLimit } from "@/lib/public-rate-limit";
 export const dynamic = "force-dynamic";
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const limited = publicRateLimit(request, "health", 120);
+  if (limited) return limited;
   try {
     const env = getEnv();
     let db: Health["db"] = "missing";

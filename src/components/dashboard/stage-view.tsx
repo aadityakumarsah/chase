@@ -15,8 +15,10 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { apiFetch, inr, sentence } from "@/lib/dashboard/client";
 import type { DashboardSummary, QueueItem } from "@/lib/dashboard/types";
 import { LiveCallPanel } from "./live-call-panel";
+import { useReadOnly } from "@/components/read-only-context";
 
 export function StageView() {
+  const readOnly = useReadOnly();
   const summary = useSWR<DashboardSummary>("/api/dashboard/summary", apiFetch, {
     refreshInterval: 1500,
   });
@@ -36,6 +38,8 @@ export function StageView() {
         if (document.fullscreenElement) return void document.exitFullscreen?.();
         return void document.documentElement.requestFullscreen?.();
       }
+      if (readOnly && ["1", "2", "3", "r", "R"].includes(event.key))
+        return toast.info("This public demo is read-only");
       if (event.key === "1") {
         const debtor = queue.data?.items.find((item) => item.demoDebtor);
         if (!debtor) return toast.error("Configure DEMO_DEBTOR_PHONE first");
@@ -87,7 +91,7 @@ export function StageView() {
       window.clearTimeout(timer);
       window.removeEventListener("keydown", keydown);
     };
-  }, [queue.data, summary.data]);
+  }, [queue.data, readOnly, summary.data]);
   if (!summary.data || !queue.data)
     return (
       <div className="grid min-h-screen place-items-center bg-background text-2xl">
@@ -216,18 +220,26 @@ export function StageView() {
             exit={{ opacity: 0 }}
             className="fixed right-8 bottom-8 flex items-center gap-5 rounded-xl border bg-card/95 px-5 py-3 text-[20px] shadow-2xl"
           >
-            <span>
-              <kbd>1</kbd> Call
-            </span>
-            <span>
-              <kbd>2</kbd> Pay
-            </span>
-            <span>
-              <kbd>3</kbd> Brief
-            </span>
-            <span>
-              <kbd>R</kbd> Reset
-            </span>
+            {!readOnly && (
+              <span>
+                <kbd>1</kbd> Call
+              </span>
+            )}
+            {!readOnly && (
+              <span>
+                <kbd>2</kbd> Pay
+              </span>
+            )}
+            {!readOnly && (
+              <span>
+                <kbd>3</kbd> Brief
+              </span>
+            )}
+            {!readOnly && (
+              <span>
+                <kbd>R</kbd> Reset
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <Expand size={20} /> F Fullscreen
             </span>
