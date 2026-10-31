@@ -700,8 +700,8 @@ export function LandingPage() {
                   <a href="#walkthrough" className={styles.primaryButton}>
                     See Chase in action <ArrowRight size={17} />
                   </a>
-                  <Link href="/login" className={styles.secondaryButton}>
-                    Open workspace <ArrowUpRight size={17} />
+                  <Link href="/signup" className={styles.secondaryButton}>
+                    Get started free <ArrowUpRight size={17} />
                   </Link>
                 </div>
                 <div className={styles.heroFootnote}>
@@ -940,8 +940,8 @@ export function LandingPage() {
               <span>Leave the chase to us.</span>
             </h2>
             <div className={styles.heroActions}>
-              <Link href="/login" className={styles.primaryButton}>
-                Open your workspace <ArrowRight size={17} />
+              <Link href="/signup" className={styles.primaryButton}>
+                Start collecting free <ArrowRight size={17} />
               </Link>
               <a href="#walkthrough" className={styles.secondaryButton}>
                 Explore the demo <Play size={15} />
