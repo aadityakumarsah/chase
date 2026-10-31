@@ -31,10 +31,33 @@ async function main() {
     timeout: 15000,
     maxRetries: 1,
   });
+  const failures: string[] = [];
   for (const interval of ["monthly", "yearly"] as const) {
     const pricing = PLANS.pro.pricing![interval];
-    const raw = await client.products.retrieve(env[pricing.productEnvKey]!);
-    const product = productSchema.parse(raw);
+    let raw: unknown;
+    try {
+      raw = await client.products.retrieve(env[pricing.productEnvKey]!);
+    } catch (error) {
+      const status =
+        typeof error === "object" &&
+        error !== null &&
+        "status" in error &&
+        typeof error.status === "number"
+          ? error.status
+          : null;
+      failures.push(
+        `Pro ${interval}: product lookup failed${status ? ` (HTTP ${status})` : ""}. Check the API key, environment and product ID.`,
+      );
+      continue;
+    }
+    const parsed = productSchema.safeParse(raw);
+    if (!parsed.success) {
+      failures.push(
+        `Pro ${interval}: product response does not match the expected Dodo product shape.`,
+      );
+      continue;
+    }
+    const product = parsed.data;
     const expectedFrequency = interval === "monthly" ? "Month" : "Year";
     const valid =
       product.is_recurring &&
@@ -43,19 +66,34 @@ async function main() {
       product.price.price === pricing.rupees * 100 &&
       product.price.payment_frequency_count === 1 &&
       product.price.payment_frequency_interval === expectedFrequency;
-    if (!valid)
-      throw new Error(
-        `Pro ${interval}: Dodo product does not match displayed INR price or billing interval`,
+    if (!valid) {
+      const wrong: string[] = [];
+      if (!product.is_recurring || product.price.type !== "recurring_price")
+        wrong.push("recurring type");
+      if (product.price.currency !== "INR") wrong.push("INR currency");
+      if (product.price.price !== pricing.rupees * 100) wrong.push("price");
+      if (
+        product.price.payment_frequency_count !== 1 ||
+        product.price.payment_frequency_interval !== expectedFrequency
+      )
+        wrong.push("billing frequency");
+      failures.push(
+        `Pro ${interval}: product mismatch in ${wrong.join(", ")}.`,
       );
+      continue;
+    }
     console.log(`✓ Pro ${interval}: recurring INR price and frequency match`);
   }
+  if (failures.length) throw new Error(failures.join("\n"));
   console.log(
     `✓ Dodo ${env.DODO_PAYMENTS_ENVIRONMENT} catalogue verified. No checkout or charge was created.`,
   );
 }
-void main().catch(() => {
+void main().catch((error: unknown) => {
   console.error(
-    "Billing verification failed. Check product IDs, environment, INR price, interval, and API access; no secret values were printed.",
+    error instanceof Error && /^Pro (monthly|yearly): /.test(error.message)
+      ? error.message
+      : "Billing verification failed. Check required keys and product access.",
   );
   process.exitCode = 1;
 });

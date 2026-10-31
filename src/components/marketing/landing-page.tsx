@@ -627,6 +627,7 @@ export function LandingPage() {
               <a href="#walkthrough">How it works</a>
               <a href="#businesses">For your business</a>
               <Link href="/pricing">Pricing</Link>
+              <Link href="/docs">Docs</Link>
               <a href="#questions">FAQs</a>
             </nav>
             <div className={styles.navActions}>
@@ -657,6 +658,8 @@ export function LandingPage() {
                 ["#features", "Product"],
                 ["#walkthrough", "How it works"],
                 ["#businesses", "For your business"],
+                ["/pricing", "Pricing"],
+                ["/docs", "Docs"],
                 ["#questions", "FAQs"],
                 ["/login", "Open workspace"],
               ].map(([href, label]) => (
@@ -964,6 +967,7 @@ export function LandingPage() {
               <span>PRODUCT</span>
               <a href="#features">Capabilities</a>
               <a href="#walkthrough">How it works</a>
+              <Link href="/docs">Documentation</Link>
               <Link href="/login">Workspace</Link>
             </div>
             <div>

@@ -38,6 +38,8 @@ it("exempts exact public routes without prefix or extension bypasses", () => {
     "/contact-sales",
     "/api/enterprise",
     "/login/session",
+    "/docs",
+    "/docs/quickstart",
     "/pay/abc",
     "/api/tools/pay",
     "/api/bolna/webhook",
@@ -58,6 +60,7 @@ it("exempts exact public routes without prefix or extension bypasses", () => {
     "/api/events",
     "/api/tools-admin",
     "/login-admin",
+    "/docs-private",
     "/api/private.json",
     "/api/health/admin",
   ])

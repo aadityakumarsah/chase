@@ -79,7 +79,9 @@ export function productCatalogueComplete(): boolean {
 const dodoProductSchema = z.object({
   is_recurring: z.boolean(),
   price: z.object({
-    type: z.string(), currency: z.string(), price: z.number().int(),
+    type: z.string(),
+    currency: z.string(),
+    price: z.number().int(),
     payment_frequency_count: z.number().int().optional(),
     payment_frequency_interval: z.string().optional(),
   }),
@@ -91,15 +93,26 @@ export async function assertProductMatches(
   interval: BillingInterval,
   productId: string,
 ): Promise<void> {
-  const product = dodoProductSchema.safeParse(await dodo().products.retrieve(productId));
+  const product = dodoProductSchema.safeParse(
+    await dodo().products.retrieve(productId),
+  );
   const pricing = PLANS[tier].pricing?.[interval];
   const price = product.data?.price;
-  if (!product.success || !pricing || !product.data.is_recurring ||
-      price?.type !== "recurring_price" || price.currency !== "INR" ||
-      price.price !== pricing.rupees * 100 ||
-      price.payment_frequency_count !== 1 ||
-      price.payment_frequency_interval !== (interval === "monthly" ? "Month" : "Year"))
-    throw new BillingError("The Dodo product price does not match this plan. Checkout is paused.", 503);
+  if (
+    !product.success ||
+    !pricing ||
+    !product.data.is_recurring ||
+    price?.type !== "recurring_price" ||
+    price.currency !== "INR" ||
+    price.price !== pricing.rupees * 100 ||
+    price.payment_frequency_count !== 1 ||
+    price.payment_frequency_interval !==
+      (interval === "monthly" ? "Month" : "Year")
+  )
+    throw new BillingError(
+      "The Dodo product price does not match this plan. Checkout is paused.",
+      503,
+    );
 }
 
 export type CheckoutRequest = {

@@ -31,6 +31,9 @@ export function PricingPage() {
           <Link href="/" className="hover:text-white">
             Product
           </Link>
+          <Link href="/docs" className="hover:text-white">
+            Docs
+          </Link>
           <Link href="/login" className="hover:text-white">
             Log in
           </Link>

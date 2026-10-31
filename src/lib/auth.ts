@@ -68,6 +68,7 @@ export function isPublicPath(path: string): boolean {
   const roots = [
     "/login",
     "/pricing",
+    "/docs",
     "/contact-sales",
     "/api/enterprise",
     "/signup",

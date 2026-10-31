@@ -1015,9 +1015,7 @@ export const subscriptions = pgTable(
     currentPeriodEnd: ts("current_period_end"),
     /** Ignore delayed webhooks older than the latest state already applied. */
     lastDodoEventAt: ts("last_dodo_event_at"),
-    cancelAtPeriodEnd: boolean("cancel_at_period_end")
-      .default(false)
-      .notNull(),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
     trialEndsAt: ts("trial_ends_at"),
     cancelledAt: ts("cancelled_at"),
     startedByUserId: uuid("started_by_user_id").references(() => appUsers.id),

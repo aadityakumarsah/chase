@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { productDocs } from "@/lib/product-docs";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -17,5 +18,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.5,
     },
+    ...productDocs.map((doc) => ({
+      url: `https://chase-liard.vercel.app/docs${doc.slug === "overview" ? "" : `/${doc.slug}`}`,
+      changeFrequency: "monthly" as const,
+      priority: doc.slug === "overview" ? 0.8 : 0.6,
+    })),
   ];
 }

@@ -166,4 +166,10 @@ Chase moved from a single-tenant passcode demo to a multi-user product on the us
 - Implemented public `/pricing` (Free, Pro monthly/yearly, Enterprise), `/contact-sales`, and owner-only `/settings/billing` with usage, hosted Dodo checkout and customer portal. Enterprise requests persist for manual sales follow-up; no email is sent.
 - Migration 0012 adds subscriptions, verified billing events, Enterprise leads and workspace billing fields with forced RLS and no browser database privileges. Applied to the configured Supabase database.
 - Signed Dodo subscription webhooks are parsed using the current payload shape (no `payload_type`), product allowlist, workspace-linked customer ID/metadata, atomic idempotency and timestamp ordering. Free/Pro entitlements now gate the paid actions. Checkout cannot activate a plan from a return URL.
-- Live Dodo credentials and product IDs are absent. Product catalogue verification, test checkout, signed Dodo delivery, live charge/refund and public-domain acceptance remain pending. `DEMO_MODE` and the calling allowlist remain unchanged. See docs/billing-dodo.md for exact owner setup.
+- Dodo key names are now present in the ignored local `.env`. A read-only catalogue verification reached both products but found monthly currency/price mismatch and yearly currency/price/frequency mismatch against Chase’s INR plan. Test checkout, signed Dodo delivery, live charge/refund and public-domain acceptance remain pending. `DEMO_MODE` and the calling allowlist remain unchanged. See docs/billing-dodo.md for exact owner setup.
+
+## Public product documentation — 1 November 2026
+
+- Added `/docs` plus eight product guides for onboarding, CSV import, rating, calls, payment promises, briefs, plans and integrations. These are user-facing operating guides, not repository or OSS setup instructions.
+- Added public auth exemption, landing/pricing navigation, sitemap entries, desktop/mobile sidebar, searchable guide navigation, section links, workflow diagrams and copyable CSV/event examples. Corrected the CSV guide against the actual nine-column importer and its immediate-import behavior.
+- Typecheck, lint, 193 tests and production build pass. Desktop/mobile local browser captures show no horizontal overflow. No outbound call, message, checkout or charge was created.
