@@ -116,3 +116,7 @@
 - 2026-10-31 — The workspace owner cannot be demoted or removed, so a workspace can never become ownerless. Ownership transfer is deliberately not an invitation flow.
 - 2026-10-31 — The destructive sample-data reset now requires the owner role, a workspace that is actually the seeded sample, and a database containing no other business. On a real multi-tenant deployment it is therefore unreachable. `app_users` is excluded from its TRUNCATE so resetting sample data can never delete real accounts.
 - 2026-10-31 — Pin Node >= 22 (`.nvmrc`, `engines`). The Supabase SDK requires a native WebSocket and fails on Node 20; Vercel already runs a newer runtime.
+- 2026-10-31 — Make the Vercel Supabase cutover an explicit, three-key operation sourced from `.env.local`, with a dry-run default. The legacy `.env` and marketplace Neon variables must not be bulk-synced over tenant configuration.
+- 2026-10-31 — Do not deploy the Supabase server key: current application paths do not use the admin client, and authentication needs only the public URL/key. Treat that key as optional in `configReport()`.
+- 2026-10-31 — Show Google sign-in only when Supabase's public auth settings confirm that Google is enabled. The current project reports it disabled; displaying an unusable button misleads new users.
+- 2026-10-31 — Stage the Supabase build on an unaliased, protected production deployment before promotion. Keep the public domain on its prior deployment until credential rotation and Auth redirects/SMTP configuration are complete.

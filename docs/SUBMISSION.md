@@ -2,7 +2,8 @@
 
 ## Current blockers
 
-- `DEMO_DEBTOR_PHONE`, `OWNER_PHONE`, `CALL_ALLOWLIST` and `DEMO_VIEW_PASSCODE` are unset.
+- `DEMO_DEBTOR_PHONE`, `OWNER_PHONE` and `CALL_ALLOWLIST` are unset; a judge-facing read-only Supabase viewer account has not been prepared.
+- Production Supabase credentials need rotation before public cutover.
 - The Bolna email/form URL and the final unlisted video URL are not available in this workspace.
 
 The repository must not claim submission, rehearsals, deployment or phone acceptance until these are resolved.
@@ -18,7 +19,7 @@ Chase is the receivables and respectful collections operating layer for Indian S
 - **Category:** Voice AI / fintech operations / accounts receivable
 - **Repository:** https://github.com/aadityakumarsah/chase
 - **Live app:** https://chase-liard.vercel.app
-- **Read-only passcode:** pending `DEMO_VIEW_PASSCODE`
+- **Read-only access:** pending a Supabase viewer account in the demo workspace
 - **Video:** pending unlisted URL, verified logged out
 - **Team:** Aaditya Sah — product, engineering and voice AI
 
@@ -42,11 +43,11 @@ Bolna should remain the best voice orchestration layer. Chase is vertical workfl
 
 ## Final submission checklist
 
-- [x] `pnpm verify:e2e` is fully green against production.
+- [ ] `pnpm verify:e2e` passes against the Supabase-backed production domain with an explicit demo workspace.
 - [ ] Three real-phone rehearsal rows in `docs/DEMO.md` contain timings.
 - [ ] `docs/assets/chase-stage.gif` and the unlisted video are final.
 - [ ] `pnpm secret:scan` passes immediately before push.
 - [ ] Public repository opens in a logged-out browser.
-- [ ] Live demo passcode cannot mutate calls, prompts, settings or demo controls.
+- [ ] The judge's viewer account cannot mutate calls, prompts, settings or demo controls.
 - [ ] Video plays while logged out and is three minutes or less.
 - [ ] Form receipt or confirmation is saved outside the repository.

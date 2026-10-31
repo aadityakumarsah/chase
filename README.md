@@ -6,7 +6,9 @@
 
 **Live app:** [chase-liard.vercel.app](https://chase-liard.vercel.app) · **Source:** [github.com/aadityakumarsah/chase](https://github.com/aadityakumarsah/chase)
 
-Chase is multi-tenant: anyone can sign up with Google or an email address, create a workspace, invite teammates and run their own receivables. Identity is Supabase Auth; every workspace's data, calling policy and merchant UPI ID are its own. See [docs/multi-tenancy.md](docs/multi-tenancy.md).
+The public domain is still on the earlier demo deployment while production configuration and final cutover are pending.
+
+Chase is multi-tenant: users can sign up with email, create a workspace, invite teammates and run their own receivables. Google sign-in appears only when enabled in Supabase. Identity is Supabase Auth; every workspace's data, calling policy and merchant UPI ID are its own. See [docs/multi-tenancy.md](docs/multi-tenancy.md).
 
 ## The problem
 
@@ -25,7 +27,7 @@ Indian distributors and wholesalers sell on credit, but the follow-up work still
 
 ```mermaid
 flowchart LR
-  L[Ledger CSV / Tally export] --> DB[(Postgres / Neon)]
+  L[Ledger CSV / Tally export] --> DB[(Supabase Postgres)]
   DB --> R[Rating + R1–R11 gate]
   R --> Q[Operator queue]
   Q --> B[Bolna voice agent]
@@ -101,7 +103,7 @@ corepack pnpm secret:scan
 corepack pnpm verify:e2e
 ```
 
-`verify:e2e` checks health, deployed Bolna URLs, good/bad tool and webhook credentials, a dry campaign, two simulator personas and a non-delivering brief preview. It never places a phone call.
+`verify:e2e` checks health, deployed Bolna URLs, service authentication, tenant API denial and two simulator personas. Set `E2E_BUSINESS_ID` to explicitly run a dry campaign and non-delivering brief preview for one workspace. It never places a phone call.
 
 ## Environment reference
 
@@ -110,7 +112,7 @@ Copy `.env.example` to `.env`; every example value is intentionally blank. Never
 | Area                    | Required keys                                                                 |
 | ----------------------- | ----------------------------------------------------------------------------- |
 | App and database        | `APP_BASE_URL`, `DATABASE_URL`, `DEMO_MODE`, `DEFAULT_TZ`                     |
-| Dashboard security      | `ADMIN_PASSCODE`, `DEMO_VIEW_PASSCODE`                                        |
+| User accounts           | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`            |
 | Public service auth     | `CHASE_TOOL_SECRET`, `CHASE_WEBHOOK_SECRET`, `CHASE_PROXY_KEY`, `CRON_SECRET` |
 | Bolna                   | `BOLNA_API_KEY`, both agent IDs, voice/model/provider settings                |
 | Claude / compatible LLM | `LLM_PROVIDER` and its provider key; optional task model overrides            |

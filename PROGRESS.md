@@ -145,3 +145,10 @@ Chase moved from a single-tenant passcode demo to a multi-user product on the us
 - Per-workspace business profile, calling window, attempt caps, UPI ID and payee name are editable in Settings; payment links use the workspace's own VPA.
 - Typecheck, lint, 184 unit tests (25 files) and the production build pass. A live two-tenant browser run against real Supabase accounts verified sign-in, onboarding, workspace scoping, a forged workspace cookie failing to switch tenants, cross-origin mutation rejection, email-bound invitations, out-of-policy settings rejection and sign-out revoking API access.
 - Not done: billing enforcement, invitation email delivery, per-tenant LLM telemetry stamping, per-tenant Bolna agents, and shared-store rate limiting. See [docs/multi-tenancy.md](docs/multi-tenancy.md).
+
+## Supabase deployment staging — 31 October 2026
+
+- Vercel production now has the Supabase pooler URL and the two public Auth settings. The unused Supabase server key was not deployed. The cutover script reads only these three names from `.env.local`, defaults to a dry run and never copies the old `.env` wholesale.
+- An unaliased production deployment is ready at `https://chase-jnrbxpx2z-aadityasahs-projects.vercel.app`. Through Vercel's protection bypass, `/api/health` reports a reachable database; `/login` renders without a Google button because the project reports Google OAuth disabled; anonymous workspace and campaign API requests return 401. The public `chase-liard.vercel.app` domain still serves the earlier build.
+- The old passcode-based E2E verifier was updated to assert anonymous tenant denial and require an explicit `E2E_BUSINESS_ID` for tenant data dry runs. Typecheck, lint, 184 tests and production build pass on the staged code.
+- Supabase Auth Site URL/redirect allowlist and production SMTP still need dashboard verification. Credential rotation is pending before promoting the public domain. No real calls or messages were placed.

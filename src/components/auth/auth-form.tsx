@@ -15,7 +15,15 @@ type Mode = "signin" | "signup";
  * Chase never sees a password: the browser talks to Supabase directly and the
  * resulting session cookie is what our server verifies on each request.
  */
-export function AuthForm({ mode, next }: { mode: Mode; next?: string }) {
+export function AuthForm({
+  mode,
+  next,
+  googleEnabled = false,
+}: {
+  mode: Mode;
+  next?: string;
+  googleEnabled?: boolean;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -94,23 +102,27 @@ export function AuthForm({ mode, next }: { mode: Mode; next?: string }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={withGoogle}
-        disabled={busy !== null}
-        className={styles.googleButton}
-      >
-        {busy === "google" ? (
-          <Loader2 size={16} className={styles.spin} />
-        ) : (
-          <GoogleMark />
-        )}
-        Continue with Google
-      </button>
+      {googleEnabled && (
+        <button
+          type="button"
+          onClick={withGoogle}
+          disabled={busy !== null}
+          className={styles.googleButton}
+        >
+          {busy === "google" ? (
+            <Loader2 size={16} className={styles.spin} />
+          ) : (
+            <GoogleMark />
+          )}
+          Continue with Google
+        </button>
+      )}
 
-      <div className={styles.authDivider}>
-        <span>or use your email</span>
-      </div>
+      {googleEnabled && (
+        <div className={styles.authDivider}>
+          <span>or use your email</span>
+        </div>
+      )}
 
       <form onSubmit={onSubmit}>
         {mode === "signup" && (

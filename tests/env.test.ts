@@ -64,6 +64,16 @@ describe("environment", () => {
     // report must now flag as missing authentication.
     expect(report.auth.status).toBe("missing");
     expect(report.auth.missing).toContain("NEXT_PUBLIC_SUPABASE_URL");
-    expect(report.auth.missing).toContain("SUPABASE_SECRET_KEY");
+    expect(report.auth.missing).toContain(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    );
+    expect(
+      configReport(
+        loadEnv({
+          NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "public-test-key",
+        }),
+      ).auth.status,
+    ).toBe("configured");
   });
 });

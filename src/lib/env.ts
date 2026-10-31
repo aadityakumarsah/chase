@@ -240,7 +240,6 @@ export function configReport(
     auth: check([
       "NEXT_PUBLIC_SUPABASE_URL",
       "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-      "SUPABASE_SECRET_KEY",
     ]),
     security: check([
       "CHASE_TOOL_SECRET",

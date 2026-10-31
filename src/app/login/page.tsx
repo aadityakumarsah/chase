@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { ChaseBrand } from "@/components/marketing/brand";
 import styles from "@/components/marketing/marketing.module.css";
+import { googleSignInAvailable } from "@/lib/supabase/providers";
 
 export default async function Login({
   searchParams,
@@ -11,6 +12,7 @@ export default async function Login({
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const { error, next } = await searchParams;
+  const googleEnabled = await googleSignInAvailable();
   return (
     <main className={`${styles.site} ${styles.signIn}`}>
       <section className={styles.signInStory}>
@@ -49,7 +51,7 @@ export default async function Login({
           ) : (
             <p>Sign in to pick up where your follow-ups left off.</p>
           )}
-          <AuthForm mode="signin" next={next} />
+          <AuthForm mode="signin" next={next} googleEnabled={googleEnabled} />
           <Link href="/">
             <ArrowLeft size={14} />
             Back to Chase <ArrowUpRight size={13} />

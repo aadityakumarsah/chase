@@ -104,7 +104,26 @@ business. Chase is never a payment intermediary and holds no settlement balance.
 
 ## Verifying it
 
-`scripts/verify-accounts.tmp.ts` (temporary, run against a dev server) drives two
-real Supabase accounts through sign-in, onboarding, isolation, CSRF, invitations,
-settings policy and sign-out. `tests/tenancy.test.ts` covers role ordering, input
-policy and the consent-based contact gate offline.
+The two-account acceptance run drove sign-in, onboarding, isolation, CSRF,
+invitations, settings policy and sign-out against the Supabase project.
+`tests/tenancy.test.ts` covers role ordering, input policy and the consent-based
+contact gate offline. `pnpm verify:e2e` uses an explicit `E2E_BUSINESS_ID` for
+tenant data checks and otherwise skips those checks. It never chooses a random
+workspace.
+
+## Production configuration
+
+Vercel production uses `APP_BASE_URL` for same-origin mutation checks and
+Bolna callbacks. `pnpm vercel:env:sync` previews a narrow cutover from
+`.env.local`: `DATABASE_URL` (the Supabase transaction pooler) and the two
+browser-safe Supabase Auth settings. Add `--apply` to set those three variables.
+It does not copy the old `.env`, install a Supabase server key or change
+`DEMO_MODE`. Use `DIRECT_URL` locally for migrations; never deploy it to the
+web runtime.
+
+In Supabase Auth, set the public Chase origin as the Site URL and allow
+`https://chase-liard.vercel.app/auth/callback` as a redirect URL. Configure
+production SMTP before opening email sign-up broadly. Google OAuth is currently
+disabled in the project, so Chase hides its button until the provider is enabled.
+Keep `DEMO_MODE=true` until owner numbers, per-debtor consent and real-phone
+acceptance have been verified. Rotate production credentials before launch.

@@ -1,29 +1,47 @@
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
-const source = readFileSync(".env", "utf8");
-const skip = new Set(["APP_BASE_URL", "DATABASE_URL"]);
-const entries = source
-  .split(/\r?\n/)
-  .map((line) => line.trim())
-  .filter((line) => line && !line.startsWith("#") && line.includes("="))
-  .map((line) => {
-    const index = line.indexOf("=");
-    const key = line.slice(0, index).trim();
-    let value = line.slice(index + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    )
-      value = value.slice(1, -1);
-    return [key, value] as const;
-  })
-  .filter(([key, value]) => value && !skip.has(key));
+// Production cutover is intentionally narrow. The old .env still contains
+// single-tenant and Neon-era values; bulk syncing it could undo tenant isolation.
+const keys = [
+  "DATABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+] as const;
+const source = readFileSync(".env.local", "utf8");
+const entries = new Map<string, string>();
+for (const line of source.split(/\r?\n/)) {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith("#")) continue;
+  const index = trimmed.indexOf("=");
+  if (index < 1) continue;
+  const key = trimmed.slice(0, index).trim();
+  let value = trimmed.slice(index + 1).trim();
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  )
+    value = value.slice(1, -1);
+  entries.set(key, value);
+}
 
-for (const [key, value] of entries) {
-  const sensitive = /KEY|SECRET|TOKEN|PASSCODE|ALLOWLIST|PHONE|SID|VPA/.test(
-    key,
-  );
+for (const key of keys) {
+  if (!entries.get(key)) throw new Error(`Missing ${key} in .env.local`);
+}
+const db = new URL(entries.get("DATABASE_URL")!);
+if (
+  !["postgres:", "postgresql:"].includes(db.protocol) ||
+  !db.hostname.endsWith(".supabase.com")
+)
+  throw new Error("DATABASE_URL must point to the Supabase pooler");
+
+if (!process.argv.includes("--apply")) {
+  console.log(`Dry run: would set ${keys.join(", ")} for Vercel production.`);
+  console.log("Run pnpm vercel:env:sync -- --apply to apply.");
+  process.exit(0);
+}
+
+for (const key of keys) {
   const result = spawnSync(
     "vercel",
     [
@@ -33,14 +51,17 @@ for (const [key, value] of entries) {
       "production",
       "--force",
       "--yes",
-      ...(sensitive ? ["--sensitive"] : []),
+      ...(key === "DATABASE_URL" ? ["--sensitive"] : []),
     ],
-    { input: value, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] },
+    {
+      input: entries.get(key),
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    },
   );
   if (result.status !== 0) {
     console.error(`Failed to set ${key}; no value was printed.`);
     process.exit(1);
   }
-  console.log(`Set ${key} for production.`);
+  console.log(`Set ${key} for Vercel production.`);
 }
-console.log(`Synced ${entries.length} populated deployment keys.`);
