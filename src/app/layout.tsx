@@ -6,8 +6,28 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Chase · Get paid",
-  description: "Bolna makes the call. Chase gets you paid.",
+  metadataBase: new URL("https://chase-liard.vercel.app"),
+  title: {
+    default: "Chase | Voice-powered receivables for Indian businesses",
+    template: "%s | Chase",
+  },
+  description:
+    "Bolna makes the call. Chase gets you paid. Explainable follow-up, respectful AI voice calls and payment promises for Indian businesses.",
+  applicationName: "Chase",
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    siteName: "Chase",
+    title: "Chase — Less chasing. More business.",
+    description:
+      "Voice-powered receivables for Indian businesses. Bolna makes the call. Chase gets you paid.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Chase — Less chasing. More business.",
+  },
+  robots: { index: false, follow: false },
 };
 export default function RootLayout({
   children,

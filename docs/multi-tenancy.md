@@ -127,7 +127,6 @@ web runtime.
 
 In Supabase Auth, set the public Chase origin as the Site URL and allow
 `https://chase-liard.vercel.app/auth/callback` as a redirect URL. Configure
-production SMTP before opening email sign-up broadly. Google OAuth is currently
-disabled in the project, so Chase hides its button until the provider is enabled.
+production SMTP before opening email sign-up broadly. Google OAuth is enabled in the project; Chase displays its button when Supabase reports it enabled. Complete an interactive sign-in to confirm the Google consent screen and redirect allowlist.
 Keep `DEMO_MODE=true` until owner numbers, per-debtor consent and real-phone
 acceptance have been verified. Rotate production credentials before launch.

@@ -1,6 +1,6 @@
 {
   "name": "chase",
-  "version": "0.1.0",
+  "version": "0.9.0-beta.1",
   "private": true,
   "packageManager": "pnpm@12.16.1",
   "engines": {

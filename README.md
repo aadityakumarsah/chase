@@ -1,12 +1,14 @@
 # Chase
 
-**Bolna makes the call. Chase gets you paid.** Chase is the receivables and respectful collections operating layer for Indian SMBs.
+**Bolna makes the call. Chase gets you paid.**
+
+[![Checks](https://github.com/aadityakumarsah/chase/actions/workflows/ci.yml/badge.svg)](https://github.com/aadityakumarsah/chase/actions/workflows/ci.yml) Chase is the receivables and respectful collections operating layer for Indian SMBs.
 
 ![Chase stage demo](docs/assets/chase-stage.gif)
 
 **Live app:** [chase-liard.vercel.app](https://chase-liard.vercel.app) · **Source:** [github.com/aadityakumarsah/chase](https://github.com/aadityakumarsah/chase)
 
-The public domain is still on the earlier demo deployment while production configuration and final cutover are pending.
+The public domain remains on the earlier demo deployment until exposed credentials are rotated and production Auth redirects/SMTP are confirmed. A protected Supabase-backed deployment is staged for verification.
 
 Chase is multi-tenant: users can sign up with email, create a workspace, invite teammates and run their own receivables. Google sign-in appears only when enabled in Supabase. Identity is Supabase Auth; every workspace's data, calling policy and merchant UPI ID are its own. See [docs/multi-tenancy.md](docs/multi-tenancy.md).
 
@@ -82,7 +84,7 @@ The Part 9 local proxy acceptance measured **1,475 ms p50 request-to-first-provi
 
 ## Run locally
 
-Requirements: Node 20.19+, Corepack, Postgres and Bolna/Claude credentials for live integrations.
+Requirements: Node 22+, Corepack, Postgres and Bolna/Claude credentials for live integrations.
 
 ```bash
 corepack enable
@@ -120,7 +122,7 @@ Copy `.env.example` to `.env`; every example value is intentionally blank. Never
 | Messaging               | console by default; Meta or Twilio keys for external delivery                 |
 | Payments                | hosted simulator by default; merchant identity or Razorpay test keys          |
 
-See [docs/setup.md](docs/setup.md), [docs/llm-layer.md](docs/llm-layer.md) and [docs/DEMO.md](docs/DEMO.md) for the complete operating flow.
+See [the business workflow](docs/user-workflow.md), [setup](docs/setup.md), [LLM layer](docs/llm-layer.md) and [demo guide](docs/DEMO.md) for business onboarding, Google sign-in, imports, call controls, payment simulation, hosting and acceptance.
 
 ## Roadmap
 

@@ -35,7 +35,12 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChaseBrand } from "./brand";
+import { hasBolnaVoiceRecording } from "@/lib/marketing/audio-manifest";
 import styles from "./marketing.module.css";
+import {
+  walkthroughAudioPath,
+  walkthroughLines,
+} from "@/lib/marketing/walkthrough";
 
 const features = [
   {
@@ -121,30 +126,28 @@ const steps = [
   {
     label: "Connect",
     title: "A familiar conversation.",
-    quote:
-      "नमस्ते, मैं Chase की AI assistant हूँ। क्या मेरी बात सुरेश जी से हो रही है?",
+    quote: walkthroughLines[0],
     detail: "AI disclosed · identity confirmation first",
     icon: Phone,
   },
   {
     label: "Remember",
     title: "A little context goes a long way.",
-    quote: "पिछली बार आपने 5 तारीख बोला था। आज कितना payment कर पाएँगे?",
+    quote: walkthroughLines[1],
     detail: "After identity confirmation · prior promise recalled",
     icon: Users,
   },
   {
     label: "Act",
     title: "A promise becomes a next step.",
-    quote:
-      "बिल्कुल। ₹2,000 का payment link भेज देती हूँ। बाकी के लिए कौन-सी तारीख ठीक रहेगी?",
+    quote: walkthroughLines[2],
     detail: "Illustrative UPI link · dated promise",
     icon: Wallet,
   },
   {
     label: "Follow through",
     title: "Every outcome comes back to you.",
-    quote: "आपका demo payment confirm हो गया। धन्यवाद, सुरेश जी।",
+    quote: walkthroughLines[3],
     detail: "Simulated payment · account updated",
     icon: CircleCheck,
   },
@@ -345,14 +348,85 @@ function HeroScene() {
 function Walkthrough() {
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [audioError, setAudioError] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+
   useEffect(() => {
-    if (!playing) return;
-    const timer = window.setTimeout(() => {
-      if (step === steps.length - 1) setPlaying(false);
-      else setStep(step + 1);
-    }, 3800);
-    return () => window.clearTimeout(timer);
+    if (!hasBolnaVoiceRecording) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!playing) {
+      audio.pause();
+      return;
+    }
+    void audio.play().catch(() => {
+      setPlaying(false);
+      setAudioError(true);
+    });
   }, [playing, step]);
+
+  useEffect(() => () => window.speechSynthesis?.cancel(), []);
+
+  function speakStep(index: number) {
+    if (!("speechSynthesis" in window)) {
+      setPlaying(false);
+      setAudioError(true);
+      return;
+    }
+    speechRef.current = null;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(walkthroughLines[index]);
+    utterance.lang = "hi-IN";
+    utterance.rate = 0.92;
+    const localHindi = window.speechSynthesis
+      .getVoices()
+      .find(
+        (voice) =>
+          voice.localService && voice.lang.toLowerCase().startsWith("hi"),
+      );
+    if (localHindi) utterance.voice = localHindi;
+    utterance.onend = () => {
+      if (speechRef.current !== utterance) return;
+      if (index === steps.length - 1) {
+        speechRef.current = null;
+        setPlaying(false);
+      } else {
+        setStep(index + 1);
+        speakStep(index + 1);
+      }
+    };
+    utterance.onerror = () => {
+      if (speechRef.current !== utterance) return;
+      speechRef.current = null;
+      setPlaying(false);
+      setAudioError(true);
+    };
+    speechRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    setPlaying(true);
+  }
+
+  function stopVoice() {
+    setPlaying(false);
+    if (!hasBolnaVoiceRecording && "speechSynthesis" in window) {
+      speechRef.current = null;
+      window.speechSynthesis.cancel();
+    }
+  }
+
+  function playOrPause() {
+    if (playing) {
+      stopVoice();
+      return;
+    }
+    setAudioError(false);
+    const next = step === steps.length - 1 ? 0 : step;
+    if (next !== step) setStep(next);
+    if (hasBolnaVoiceRecording) setPlaying(true);
+    else speakStep(next);
+  }
+
   const current = steps[step];
   return (
     <section
@@ -385,7 +459,8 @@ function Walkthrough() {
                 key={item.label}
                 onClick={() => {
                   setStep(i);
-                  setPlaying(false);
+                  stopVoice();
+                  setAudioError(false);
                 }}
                 aria-pressed={step === i}
               >
@@ -433,27 +508,47 @@ function Walkthrough() {
               </motion.div>
             </AnimatePresence>
             <Waveform active={playing} />
+            {hasBolnaVoiceRecording && (
+              <audio
+                ref={audioRef}
+                src={walkthroughAudioPath(step)}
+                preload="none"
+                onEnded={() => {
+                  if (step === steps.length - 1) setPlaying(false);
+                  else setStep(step + 1);
+                }}
+                onError={() => {
+                  setPlaying(false);
+                  setAudioError(true);
+                }}
+              />
+            )}
             <div className={styles.player}>
               <button
                 className={styles.roundButton}
                 aria-label={playing ? "Pause walkthrough" : "Play walkthrough"}
-                onClick={() => {
-                  if (!playing && step === 3) setStep(0);
-                  setPlaying(!playing);
-                }}
+                onClick={playOrPause}
               >
                 {playing ? <Pause size={17} /> : <Play size={17} />}
               </button>
               <span>
-                {playing ? "Playing walkthrough" : "Explore at your own pace"}
-                <small>Text simulation · no audio playback</small>
+                {playing ? "Playing voice preview" : "Hear the conversation"}
+                <small role={audioError ? "alert" : undefined}>
+                  {audioError
+                    ? "Voice unavailable on this device. Read the transcript above."
+                    : hasBolnaVoiceRecording
+                      ? "Prerecorded Bolna voice · fictional example · no live call"
+                      : "Device voice preview · Bolna recording pending · no live call"}
+                </small>
               </span>
               <button
                 className={styles.roundButton}
                 aria-label="Restart walkthrough"
                 onClick={() => {
+                  stopVoice();
+                  setAudioError(false);
                   setStep(0);
-                  setPlaying(false);
+                  if (audioRef.current) audioRef.current.currentTime = 0;
                 }}
               >
                 <RotateCcw size={16} />

@@ -7,6 +7,8 @@ import { log } from "@/lib/log";
 import { publicRateLimit } from "@/lib/public-rate-limit";
 
 export const runtime = "nodejs";
+// Post-call analysis runs in after(); allocate enough function time for the LLM.
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 const MAX_BODY_BYTES = 512 * 1024;

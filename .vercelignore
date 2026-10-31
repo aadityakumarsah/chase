@@ -1,0 +1,6 @@
+# Never upload local credentials with the CLI deployment archive.
+.env
+.env.*
+!.env.example
+.artifacts/
+*.log

@@ -86,6 +86,8 @@ export function isPublicPath(path: string): boolean {
     path === "/api/health" ||
     path.startsWith("/_next/") ||
     ["/favicon.ico", "/robots.txt", "/sitemap.xml"].includes(path) ||
-    path.startsWith("/assets/")
+    path.startsWith("/assets/") ||
+    path.startsWith("/audio/") ||
+    path === "/opengraph-image.png"
   );
 }
