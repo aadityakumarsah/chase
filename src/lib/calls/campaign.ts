@@ -9,6 +9,8 @@ import { maskPhone } from "@/lib/phone";
 import { startCollectionCall } from "./dial";
 
 export const campaignInputSchema = z.object({
+  /** The workspace whose queue is being worked. Never taken from the client. */
+  businessId: z.uuid(),
   limit: z.coerce.number().int().min(1).max(50).default(10),
   dryRun: z.boolean().default(true),
 });
@@ -28,7 +30,7 @@ function concurrencyLimit(value: unknown) {
 export async function runCampaign(input: z.input<typeof campaignInputSchema>) {
   const parsed = campaignInputSchema.parse(input);
   const now = new Date();
-  const ratingRows = (await latestRatings())
+  const ratingRows = (await latestRatings(parsed.businessId))
     .filter(({ rating }) =>
       ["call_today", "call_this_week"].includes(rating.nextAction),
     )
@@ -38,7 +40,11 @@ export async function runCampaign(input: z.input<typeof campaignInputSchema>) {
     .from(callbacks)
     .innerJoin(debtors, eq(debtors.id, callbacks.debtorId))
     .where(
-      and(eq(callbacks.status, "scheduled"), lte(callbacks.scheduledFor, now)),
+      and(
+        eq(callbacks.businessId, parsed.businessId),
+        eq(callbacks.status, "scheduled"),
+        lte(callbacks.scheduledFor, now),
+      ),
     )
     .orderBy(asc(callbacks.scheduledFor));
 
@@ -83,6 +89,7 @@ export async function runCampaign(input: z.input<typeof campaignInputSchema>) {
     const item = selected[i]!;
     const result = await startCollectionCall(item.debtorId, {
       source: item.source,
+      businessId: parsed.businessId,
     });
     if (item.source === "callback" && result.status === "queued")
       await getDb()

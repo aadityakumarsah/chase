@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { processCall } from "@/lib/analysis/process";
-import { requireDashboardAdmin } from "@/lib/dashboard/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 import { getDb } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const denied = requireDashboardAdmin(request, { mutation: true });
-  if (denied) return denied;
+  const auth = await requireMember(request, { mutation: true });
+  if (!auth.ok) return auth.response;
   const id = z.uuid().safeParse((await params).id);
   if (!id.success)
     return NextResponse.json({ error: "Invalid call" }, { status: 400 });

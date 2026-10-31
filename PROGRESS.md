@@ -132,3 +132,16 @@ See [docs/llm-layer.md](docs/llm-layer.md) for configuration, commands, accounti
 - Desktop navigation fully hides with a persisted preference and Cmd/Ctrl+B shortcut. Fullscreen temporarily hides it and restores the previous preference on exit; browsers rejecting fullscreen get a focus-mode fallback. Mobile navigation uses an accessible sheet that closes on selection.
 - Fixed compact queue grid placement while retaining rationale, contained wide account tables, and added an initial-load error/retry state. An unavailable activity feed no longer prevents the rest of the dashboard from rendering.
 - Typecheck, lint, all 171 tests, production build, formatting and diff checks pass. Local headless Chrome verified dashboard data loading, sidebar persistence, fullscreen hide/restore, mobile navigation dismissal and no page-wide overflow at 390px. Desktop/mobile/dashboard/login screenshots were visually inspected. No deployment or external call/message/payment was performed for this refresh.
+
+## Multi-tenant SaaS conversion — 31 October 2026
+
+Chase moved from a single-tenant passcode demo to a multi-user product on the user's own Supabase project.
+
+- Supabase Auth with email/password and Google OAuth replaces the shared passcode. New routes: `/signup`, `/auth/callback`, `/auth/signout`, `/onboarding`, `/invite/[token]`, `/settings/team`. The passcode session route was deleted.
+- Workspaces, members, invitations and phone verifications added (migration 0010); `business_id` denormalised onto all 16 remaining tenant-scoped tables with a backfill that is safe on populated databases. 26 tables now live in Supabase.
+- Migration 0011 forces RLS on every table and revokes all PostgREST privileges, including default privileges. Verified: the REST API returns `[]` for application tables with the publishable key, while the app role (BYPASSRLS) reads and writes normally.
+- Every dashboard query, API route and service takes an explicit workspace. Cross-tenant dialling, cross-tenant CSV import and cross-tenant call refresh are blocked at the service boundary, not only in the UI.
+- R1 is now a consent rule: production calling requires a per-debtor basis attested at import, owner briefs require an OTP-verified owner number, and demo mode keeps the allowlist rail. The nightly cron iterates every active workspace and isolates failures.
+- Per-workspace business profile, calling window, attempt caps, UPI ID and payee name are editable in Settings; payment links use the workspace's own VPA.
+- Typecheck, lint, 184 unit tests (25 files) and the production build pass. A live two-tenant browser run against real Supabase accounts verified sign-in, onboarding, workspace scoping, a forged workspace cookie failing to switch tenants, cross-origin mutation rejection, email-bound invitations, out-of-policy settings rejection and sign-out revoking API access.
+- Not done: billing enforcement, invitation email delivery, per-tenant LLM telemetry stamping, per-tenant Bolna agents, and shared-store rate limiting. See [docs/multi-tenancy.md](docs/multi-tenancy.md).

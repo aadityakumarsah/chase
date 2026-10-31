@@ -31,6 +31,7 @@ async function sendFirstContactDisclosure(
   if (debtor.firstContactDisclosedAt) return;
   const row = await enqueueMessage(
     {
+      businessId: debtor.businessId,
       to: debtor.phoneE164,
       text: `${businessName} may call you about invoice dues using Chase, an AI assistant. Reply STOP to opt out.`,
       debtorId: debtor.id,
@@ -46,6 +47,7 @@ async function sendFirstContactDisclosure(
       .set({ firstContactDisclosedAt: now })
       .where(eq(debtors.id, debtor.id));
     await tx.insert(complianceEvents).values({
+      businessId: debtor.businessId,
       debtorId: debtor.id,
       kind: "disclosure_sent",
       rule: "first_contact_disclosure",
@@ -56,9 +58,16 @@ async function sendFirstContactDisclosure(
 
 export async function startCollectionCall(
   debtorId: string,
-  options: { source: CollectionCallSource },
+  options: { source: CollectionCallSource; businessId?: string },
 ) {
   const preliminary = await evaluateDebtorContact(debtorId);
+  // Tenant check before any side effect: a debtor id from another workspace must
+  // never be dialled, even though the id itself is a valid uuid.
+  if (
+    options.businessId &&
+    preliminary.debtor.businessId !== options.businessId
+  )
+    throw new Error("Debtor not found in this workspace");
   if (!preliminary.decision.allowed)
     return { status: "blocked" as const, decision: preliminary.decision };
 
@@ -179,7 +188,6 @@ export async function startCollectionCall(
 
 export async function startOwnerBriefCall(briefId: string) {
   const env = getEnv();
-  if (!env.OWNER_PHONE) throw new Error("OWNER_PHONE is not configured");
   if (!env.BOLNA_BRIEF_AGENT_ID)
     throw new Error("BOLNA_BRIEF_AGENT_ID is not configured");
   const [record] = await getDb()
@@ -191,12 +199,18 @@ export async function startOwnerBriefCall(briefId: string) {
   if (record.brief.callId)
     return { status: "already_started" as const, callId: record.brief.callId };
 
+  // The number belongs to the workspace, not the deployment. A legacy
+  // OWNER_PHONE is only a fallback for the original single-tenant demo.
+  const ownerPhone = record.business.ownerPhone || env.OWNER_PHONE;
+  if (!ownerPhone)
+    throw new Error("This workspace has no owner phone number configured");
+
   const decision = evaluateContact({
     purpose: "owner_brief",
     debtor: { status: "active", firstContactDisclosedAt: new Date() },
     business: record.business,
     now: new Date(),
-    toNumber: env.OWNER_PHONE,
+    toNumber: ownerPhone,
     attemptsToday: 0,
     attemptsThisWeek: 0,
     lastAttemptAt: null,
@@ -207,11 +221,13 @@ export async function startOwnerBriefCall(briefId: string) {
     demoMode: env.DEMO_MODE,
     allowlist: env.CALL_ALLOWLIST,
     demoOverride: false,
+    ownerPhoneVerified: Boolean(record.business.ownerPhoneVerifiedAt),
   });
   if (!decision.allowed) {
     await getDb()
       .insert(complianceEvents)
       .values({
+        businessId: record.business.id,
         kind: "gate_blocked",
         rule: decision.rules
           .filter((rule) => !rule.passed)
@@ -264,6 +280,7 @@ export async function startOwnerBriefCall(briefId: string) {
       .set({ callId: call.id })
       .where(eq(briefs.id, briefId));
     await tx.insert(complianceEvents).values({
+      businessId: record.business.id,
       callId: call.id,
       kind: "gate_allowed",
       rule: "R1_allowlist",
@@ -280,7 +297,7 @@ export async function startOwnerBriefCall(briefId: string) {
   try {
     const response = await getBolnaClient().makeCall({
       agent_id: env.BOLNA_BRIEF_AGENT_ID,
-      recipient_phone_number: env.OWNER_PHONE,
+      recipient_phone_number: ownerPhone,
       ...(env.BOLNA_FROM_NUMBER
         ? { from_phone_number: env.BOLNA_FROM_NUMBER }
         : {}),
@@ -307,7 +324,7 @@ export async function startOwnerBriefCall(briefId: string) {
       payload: {
         purpose: "owner_brief",
         executionId: response.execution_id,
-        to: maskPhone(env.OWNER_PHONE),
+        to: maskPhone(ownerPhone),
       },
     });
     return {

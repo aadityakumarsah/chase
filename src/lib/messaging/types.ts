@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { e164Schema } from "@/lib/phone";
 export const messageSchema = z.object({
+  /** Owning workspace. Every message belongs to exactly one tenant. */
+  businessId: z.uuid(),
   to: e164Schema,
   text: z.string().min(1).max(4096),
   debtorId: z.uuid().optional(),

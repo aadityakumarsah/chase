@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEnv } from "@/lib/env";
-import { verifySession } from "@/lib/auth";
-import {
-  CSV_MAX_BYTES,
-  CsvImportError,
-  importCsv,
-  resolveImportBusiness,
-} from "@/lib/import/csv";
+import { requireMember } from "@/lib/tenancy/guard";
+import { CSV_MAX_BYTES, CsvImportError, importCsv } from "@/lib/import/csv";
 import { z } from "zod";
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
-  const env = getEnv();
-  if (!verifySession(request.cookies.get("admin")?.value, env.ADMIN_PASSCODE))
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (request.headers.get("origin") !== new URL(env.APP_BASE_URL).origin)
-    return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+  // Importing a customer ledger is an operator action inside one workspace.
+  const auth = await requireMember(request, { mutation: true });
+  if (!auth.ok) return auth.response;
   try {
     const length = Number(request.headers.get("content-length") ?? 0);
     if (length > CSV_MAX_BYTES + 16384)
@@ -45,10 +37,13 @@ export async function POST(request: NextRequest) {
         { error: "CSV exceeds 2 MiB limit" },
         { status: 413 },
       );
-    const businessId = await resolveImportBusiness(
-      request.nextUrl.searchParams.get("businessId") ?? undefined,
+    // The destination workspace is the signed-in one; a businessId in the query
+    // string is ignored so a member cannot write into another tenant's ledger.
+    return NextResponse.json(
+      await importCsv(text, auth.businessId, {
+        attestedByUserId: auth.session.user.id,
+      }),
     );
-    return NextResponse.json(await importCsv(text, businessId));
   } catch (error) {
     return NextResponse.json(
       {

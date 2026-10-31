@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireDashboardAdmin } from "@/lib/dashboard/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 import { dashboardQueue } from "@/lib/dashboard/queries";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
-  const denied = requireDashboardAdmin(request);
-  if (denied) return denied;
+  const auth = await requireMember(request);
+  if (!auth.ok) return auth.response;
   return NextResponse.json(
-    { items: await dashboardQueue() },
+    { items: await dashboardQueue(auth.businessId) },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

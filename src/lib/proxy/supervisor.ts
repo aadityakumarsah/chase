@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getDb } from "@/lib/db";
+import { callBusinessId } from "@/lib/db/tenant";
 import { complianceEvents } from "@/lib/db/schema";
 import { emitEvent } from "@/lib/events";
 import { getLLM } from "@/lib/llm";
@@ -80,6 +81,7 @@ async function logFlag(
   await getDb()
     .insert(complianceEvents)
     .values({
+      businessId: callBusinessId(callId),
       debtorId,
       callId,
       kind: "supervisor_flag",

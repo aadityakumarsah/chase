@@ -105,7 +105,7 @@ export async function recomputeRating(debtorId: string, now = new Date()) {
   return getDb().transaction(async (tx) => {
     // Serialize recomputations for this debtor so from/to cannot race.
     const [debtor] = await tx
-      .select({ id: debtors.id })
+      .select({ id: debtors.id, businessId: debtors.businessId })
       .from(debtors)
       .where(eq(debtors.id, debtorId))
       .for("update");
@@ -116,6 +116,7 @@ export async function recomputeRating(debtorId: string, now = new Date()) {
     const [row] = await tx
       .insert(chaseRatings)
       .values({
+        businessId: debtor.businessId,
         debtorId,
         score: result.score,
         band: result.band,

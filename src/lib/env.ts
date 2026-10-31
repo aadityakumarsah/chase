@@ -27,8 +27,27 @@ export const envSchema = z.object({
     .url()
     .refine((v) => /^postgres(ql)?:/.test(v))
     .optional(),
+  /** Session-mode connection used only for migrations and DDL (Supabase port 5432). */
+  DIRECT_URL: z
+    .string()
+    .url()
+    .refine((v) => /^postgres(ql)?:/.test(v))
+    .optional(),
   DEMO_MODE: bool.default(true),
   DEFAULT_TZ: z.literal("Asia/Kolkata").default("Asia/Kolkata"),
+
+  // Supabase Auth. Identity, passwords and OAuth live in Supabase; Chase stores
+  // no password material of any kind.
+  NEXT_PUBLIC_SUPABASE_URL: httpUrl.optional(),
+  /** Browser-safe key. Publishable (sb_publishable_…) or the legacy anon JWT. */
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: optional,
+  /** Server-only key with admin authority. Never reaches the browser. */
+  SUPABASE_SECRET_KEY: optional,
+
+  /**
+   * Legacy single-tenant passcodes. Retained only so an existing demo deployment
+   * keeps working during the move to accounts; they grant no workspace access.
+   */
   ADMIN_PASSCODE: secret,
   DEMO_VIEW_PASSCODE: secret,
   CHASE_TOOL_SECRET: secret,
@@ -218,9 +237,12 @@ export function configReport(
   };
   return {
     database: check(["DATABASE_URL"]),
+    auth: check([
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "SUPABASE_SECRET_KEY",
+    ]),
     security: check([
-      "ADMIN_PASSCODE",
-      "DEMO_VIEW_PASSCODE",
       "CHASE_TOOL_SECRET",
       "CHASE_WEBHOOK_SECRET",
       "CHASE_PROXY_KEY",

@@ -78,7 +78,11 @@ async function main() {
     assert.equal(saved.timeToFirstAudioMs, 241);
     assert.deepEqual(saved.interruptionStats, { total_interruptions: 0 });
 
-    const campaign = await runCampaign({ limit: 5, dryRun: true });
+    const campaign = await runCampaign({
+      businessId: account.business.id,
+      limit: 5,
+      dryRun: true,
+    });
     assert(Array.isArray(campaign.plan));
     console.log(
       `Part 6 verification: replay=1 call/1 analysis; campaign plan=${campaign.plan.length}`,

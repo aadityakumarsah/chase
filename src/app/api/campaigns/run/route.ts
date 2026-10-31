@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifySession } from "@/lib/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 import { runCampaign } from "@/lib/calls/campaign";
-import { getEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
-  const env = getEnv();
-  if (!verifySession(request.cookies.get("admin")?.value, env.ADMIN_PASSCODE))
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (request.headers.get("origin") !== new URL(env.APP_BASE_URL).origin)
-    return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+  const auth = await requireMember(request, { mutation: true });
+  if (!auth.ok) return auth.response;
   try {
-    return NextResponse.json(await runCampaign(await request.json()));
+    const body = await request.json();
+    return NextResponse.json(
+      // The workspace comes from the verified session, not the request body.
+      await runCampaign({ ...body, businessId: auth.businessId }),
+    );
   } catch (error) {
     return NextResponse.json(
       {

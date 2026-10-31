@@ -4,6 +4,7 @@ import { verifyCronAuthorization } from "@/lib/brief/cron";
 import { sweepPromises } from "@/lib/chase/sweep";
 import { getEnv } from "@/lib/env";
 import { runNightlyPromptPrJob } from "@/lib/promptprs/nightly";
+import { listActiveWorkspaceIds } from "@/lib/tenancy";
 import { publicRateLimit } from "@/lib/public-rate-limit";
 
 export const runtime = "nodejs";
@@ -24,10 +25,39 @@ export async function GET(request: NextRequest) {
   try {
     const promises = await sweepPromises(new Date(), { includeToday: true });
     const promptPr = await runNightlyPromptPrJob();
-    const result = await runDailyBrief({
-      deliver: ["dashboard", "message", "call"],
+    // Multi-tenant: every active workspace gets its own brief. One workspace
+    // failing must not stop the others from being briefed.
+    const workspaces = await listActiveWorkspaceIds();
+    const results: Array<{
+      businessId: string;
+      ok: boolean;
+      result?: unknown;
+      error?: string;
+    }> = [];
+    for (const businessId of workspaces)
+      try {
+        results.push({
+          businessId,
+          ok: true,
+          result: await runDailyBrief({
+            businessId,
+            deliver: ["dashboard", "message", "call"],
+          }),
+        });
+      } catch (error) {
+        results.push({
+          businessId,
+          ok: false,
+          error: error instanceof Error ? error.message : "brief failed",
+        });
+      }
+    return NextResponse.json({
+      ok: results.every((entry) => entry.ok),
+      workspaces: results.length,
+      promises,
+      promptPr,
+      results,
     });
-    return NextResponse.json({ ok: true, promises, promptPr, result });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Brief cron failed" },

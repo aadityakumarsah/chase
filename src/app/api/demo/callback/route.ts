@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { desc } from "drizzle-orm";
 import { runTool } from "@/lib/calls/tools";
-import { requireDashboardAdmin } from "@/lib/dashboard/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 import { getDb } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
 import { istDay } from "@/lib/time";
 export async function POST(request: NextRequest) {
-  const denied = requireDashboardAdmin(request, { mutation: true });
-  if (denied) return denied;
+  const auth = await requireMember(request, { mutation: true });
+  if (!auth.ok) return auth.response;
   const [call] = await getDb()
     .select()
     .from(calls)

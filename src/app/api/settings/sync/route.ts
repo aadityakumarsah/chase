@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncConfiguredAgents } from "@/lib/bolna/sync-configured";
-import { requireDashboardAdmin } from "@/lib/dashboard/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 
 export async function POST(request: NextRequest) {
-  const denied = requireDashboardAdmin(request, { mutation: true });
-  if (denied) return denied;
+  const auth = await requireMember(request, { mutation: true });
+  if (!auth.ok) return auth.response;
   try {
     const agents = await syncConfiguredAgents();
     return NextResponse.json({ ok: true, agents: agents.length });

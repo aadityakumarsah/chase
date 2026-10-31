@@ -105,6 +105,7 @@ export async function runTool(
       void _;
       await tx.insert(toolInvocations).values({
         callId: call.id,
+        businessId: debtor.businessId,
         debtorId: debtor.id,
         toolName: tool,
         args: safe,
@@ -116,6 +117,7 @@ export async function runTool(
       await emitEvent(
         `tool.${tool}`,
         {
+          businessId: debtor.businessId,
           debtorId: debtor.id,
           callId: call.id,
           payload: {
@@ -161,6 +163,7 @@ export async function runTool(
         const [link] = await tx
           .insert(paymentLinks)
           .values({
+            businessId: debtor.businessId,
             debtorId: debtor.id,
             callId: call.id,
             amountPaise: amount.amount,
@@ -178,6 +181,7 @@ export async function runTool(
           {
             to: debtor.phoneE164,
             text,
+            businessId: debtor.businessId,
             debtorId: debtor.id,
             callId: call.id,
             kind: "payment_link",
@@ -191,6 +195,7 @@ export async function runTool(
         await emitEvent(
           "payment.link_created",
           {
+            businessId: debtor.businessId,
             debtorId: debtor.id,
             callId: call.id,
             payload: {
@@ -236,6 +241,7 @@ export async function runTool(
             ),
           );
         await tx.insert(promises).values({
+          businessId: debtor.businessId,
           debtorId: debtor.id,
           callId: call.id,
           amountPaise: amount.amount,
@@ -332,6 +338,7 @@ export async function runTool(
           now,
         );
       await tx.insert(callbacks).values({
+        businessId: debtor.businessId,
         debtorId: debtor.id,
         callId: call.id,
         requestedFor: slot.requested,
@@ -340,6 +347,7 @@ export async function runTool(
       });
       if (slot.adjusted) {
         await tx.insert(complianceEvents).values({
+          businessId: debtor.businessId,
           debtorId: debtor.id,
           callId: call.id,
           kind: "gate_blocked",
@@ -352,6 +360,7 @@ export async function runTool(
         await emitEvent(
           "gate.blocked",
           {
+            businessId: debtor.businessId,
             debtorId: debtor.id,
             callId: call.id,
             payload: {
@@ -397,6 +406,7 @@ export async function runTool(
         .set({ status: "dispute" })
         .where(eq(debtors.id, debtor.id));
       await tx.insert(complianceEvents).values({
+        businessId: debtor.businessId,
         debtorId: debtor.id,
         callId: call.id,
         kind: "dispute_hold",
@@ -404,11 +414,14 @@ export async function runTool(
         detail: { type: input.dispute_type, details: input.details },
       });
       refresh = debtor.id;
-      if (env.OWNER_PHONE)
+      // Escalate to the workspace's own owner, not a deployment-wide number.
+      const ownerPhone = business.ownerPhone || env.OWNER_PHONE;
+      if (ownerPhone)
         await enqueueMessage(
           {
-            to: env.OWNER_PHONE,
+            to: ownerPhone,
             text: `Dispute from ${debtor.shopName}: ${input.details}. Review in Chase.`,
+            businessId: debtor.businessId,
             debtorId: debtor.id,
             callId: call.id,
             kind: "owner_dispute",
@@ -439,6 +452,7 @@ export async function runTool(
           );
       if (!old)
         await tx.insert(optOuts).values({
+          businessId: debtor.businessId,
           debtorId: debtor.id,
           scope: input.scope,
           reason: "Caller requested stop",
@@ -451,6 +465,7 @@ export async function runTool(
           .set({ status: "do_not_contact" })
           .where(eq(debtors.id, debtor.id));
       await tx.insert(complianceEvents).values({
+        businessId: debtor.businessId,
         debtorId: debtor.id,
         callId: call.id,
         kind: "opt_out",
@@ -473,6 +488,7 @@ export async function runTool(
     void _;
     await tx.insert(toolInvocations).values({
       callId: call.id,
+      businessId: debtor.businessId,
       debtorId: debtor.id,
       toolName: tool,
       args: safe,
@@ -484,6 +500,7 @@ export async function runTool(
     await emitEvent(
       `tool.${tool}`,
       {
+        businessId: debtor.businessId,
         debtorId: debtor.id,
         callId: call.id,
         payload: {

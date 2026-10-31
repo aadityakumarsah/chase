@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import { debtorBusinessId } from "@/lib/db/tenant";
 import { contactDossiers } from "@/lib/db/schema";
 import { getLLM, type LLMProvider } from "@/lib/llm";
 import { DossierSchema } from "./schema";
@@ -36,6 +37,7 @@ export async function compileDossier(debtorId: string, provider?: LLMProvider) {
   const [saved] = await db
     .insert(contactDossiers)
     .values({
+      businessId: debtorBusinessId(debtorId),
       debtorId,
       text: d.dossier_text,
       preferredLanguage: d.preferred_language,

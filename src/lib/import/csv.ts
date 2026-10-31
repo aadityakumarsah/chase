@@ -142,11 +142,33 @@ export function parseCsv(text: string): { row: number; value: unknown }[] {
     );
   }
 }
+export type ImportOptions = {
+  /** The member who attested that these rows come from the workspace's own ledger. */
+  attestedByUserId?: string;
+  /** Recorded per debtor as the permission to contact them. */
+  consentBasis?:
+    | "ledger_customer"
+    | "written_contract"
+    | "prior_relationship"
+    | "explicit_consent";
+  /** Free-text provenance, e.g. the uploaded file name. */
+  source?: string;
+};
+
 export async function importCsv(
   text: string,
   businessId: string,
+  options: ImportOptions = {},
 ): Promise<ImportResult> {
   z.uuid().parse(businessId);
+  // Importing a ledger is the moment contact permission is asserted, so the
+  // attestation is written onto each debtor rather than kept in a config file.
+  const consent = {
+    consentBasis: options.consentBasis ?? ("ledger_customer" as const),
+    consentAttestedAt: new Date(),
+    consentAttestedBy: options.attestedByUserId ?? null,
+    consentSource: options.source ?? "csv_import",
+  };
   const rows = parseCsv(text);
   const db = getDb();
   const [business] = await db
@@ -178,6 +200,7 @@ export async function importCsv(
             preferredLanguage: v.language,
             city: business.city,
             segment: "other",
+            ...consent,
           })
           .onConflictDoUpdate({
             target: [debtors.businessId, debtors.phoneE164],
@@ -185,6 +208,7 @@ export async function importCsv(
               shopName: v.shop_name,
               contactName: v.contact_name,
               preferredLanguage: v.language,
+              ...consent,
             },
           })
           .returning();

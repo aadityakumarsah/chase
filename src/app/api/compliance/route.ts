@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireDashboardAdmin } from "@/lib/dashboard/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 import { complianceDashboard } from "@/lib/dashboard/queries";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
-  const denied = requireDashboardAdmin(request);
-  if (denied) return denied;
-  const data = await complianceDashboard();
+  const auth = await requireMember(request);
+  if (!auth.ok) return auth.response;
+  const data = await complianceDashboard(auth.businessId);
   if (request.nextUrl.searchParams.get("format") === "csv") {
     const quote = (value: unknown) =>
       `"${String(value ?? "").replaceAll('"', '""')}"`;

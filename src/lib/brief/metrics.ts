@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, getSql } from "@/lib/db";
 import { businesses } from "@/lib/db/schema";
@@ -23,18 +23,15 @@ export async function getBriefMetrics(
 ): Promise<BriefMetrics> {
   const parsed = inputSchema.parse(input);
   const forDate = parsed.date ?? istDay(parsed.now ?? new Date());
-  const [business] = parsed.businessId
-    ? await getDb()
-        .select()
-        .from(businesses)
-        .where(eq(businesses.id, parsed.businessId))
-    : await getDb()
-        .select()
-        .from(businesses)
-        .orderBy(asc(businesses.createdAt))
-        .limit(1);
-  if (!business)
-    throw new Error("Seed or configure a business before generating a brief");
+  // Multi-tenant: the brief always belongs to an explicit workspace. Falling back
+  // to "the first business" would silently report another tenant's money.
+  if (!parsed.businessId)
+    throw new Error("businessId is required to generate a brief");
+  const [business] = await getDb()
+    .select()
+    .from(businesses)
+    .where(eq(businesses.id, parsed.businessId));
+  if (!business) throw new Error("Workspace not found");
 
   const sql = getSql();
   const dayStart = istInstant(forDate, "00:00").toISOString();

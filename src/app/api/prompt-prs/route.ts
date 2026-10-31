@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generatePromptPR, listPromptPRs } from "@/lib/promptprs";
-import { requireDashboardAdmin } from "@/lib/dashboard/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const denied = requireDashboardAdmin(request);
-  if (denied) return denied;
+  const auth = await requireMember(request);
+  if (!auth.ok) return auth.response;
   return NextResponse.json({ items: await listPromptPRs() });
 }
 
 export async function POST(request: NextRequest) {
-  const denied = requireDashboardAdmin(request, { mutation: true });
-  if (denied) return denied;
+  const auth = await requireMember(request, { mutation: true });
+  if (!auth.ok) return auth.response;
   try {
     return NextResponse.json(await generatePromptPR("collections"), {
       status: 201,

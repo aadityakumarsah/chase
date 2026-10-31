@@ -62,12 +62,20 @@ export async function deliverBrief(
         continue;
       }
       const env = getEnv();
-      if (!env.OWNER_PHONE) throw new Error("OWNER_PHONE is not configured");
+      // The recipient is the workspace's own owner number.
+      const ownerPhone = row.business?.ownerPhone || env.OWNER_PHONE;
+      if (!ownerPhone)
+        throw new Error("This workspace has no owner phone number configured");
       const metrics = BriefMetricsSchema.parse(row.brief.metrics);
       const narrative = BriefNarrativeSchema.parse(row.brief.narrative);
       const text = `${narrative.headline}\nPromised ${formatINR(Number(metrics.promisedToday.amountPaise))} · Collected ${formatINR(Number(metrics.collectedToday.amountPaise))} · Connect rate ${metrics.calls.connectRate}%\n${env.APP_BASE_URL}/brief/${row.brief.forDate}`;
       const message = await enqueueMessage(
-        { to: env.OWNER_PHONE, text, kind: "daily_brief" },
+        {
+          businessId: row.brief.businessId,
+          to: ownerPhone,
+          text,
+          kind: "daily_brief",
+        },
         { dedupeKey: `brief-message:${briefId}` },
       );
       await deliverMessage(message.id);

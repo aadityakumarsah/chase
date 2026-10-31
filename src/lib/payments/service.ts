@@ -72,6 +72,7 @@ export async function recordPayment(input: z.infer<typeof paymentInputSchema>) {
     const [payment] = await tx
       .insert(payments)
       .values({
+        businessId: link.businessId,
         debtorId: link.debtorId,
         paymentLinkId: link.id,
         amountPaise: value.amountPaise,

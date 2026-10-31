@@ -1,6 +1,7 @@
 import { and, eq, gte, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, type DbExecutor } from "@/lib/db";
+import { debtorBusinessId } from "@/lib/db/tenant";
 import {
   businesses,
   calls,
@@ -299,6 +300,7 @@ export async function recordGateDecision(
 ) {
   const db = options.db ?? getDb();
   await db.insert(complianceEvents).values({
+    businessId: debtorBusinessId(debtorId),
     debtorId,
     callId: options.callId,
     kind: decision.allowed ? "gate_allowed" : "gate_blocked",

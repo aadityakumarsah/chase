@@ -143,6 +143,44 @@ export const promptPrStatus = pgEnum("prompt_pr_status", [
   "rejected",
   "rolled_back",
 ]);
+/** Workspace roles. Only `owner` may delete the workspace or change billing. */
+export const memberRole = pgEnum("member_role", [
+  "owner",
+  "admin",
+  "operator",
+  "viewer",
+]);
+export const memberStatus = pgEnum("member_status", [
+  "active",
+  "invited",
+  "suspended",
+]);
+export const orgPlan = pgEnum("org_plan", [
+  "trial",
+  "starter",
+  "growth",
+  "scale",
+]);
+export const orgStatus = pgEnum("org_status", [
+  "onboarding",
+  "active",
+  "suspended",
+  "closed",
+]);
+/**
+ * Why a workspace is permitted to contact a debtor. Recorded per debtor at import
+ * and attested by a named user; replaces the single-tenant CALL_ALLOWLIST env var.
+ */
+export const consentBasis = pgEnum("consent_basis", [
+  "ledger_customer",
+  "written_contract",
+  "prior_relationship",
+  "explicit_consent",
+]);
+export const verificationPurpose = pgEnum("verification_purpose", [
+  "owner_phone",
+  "test_number",
+]);
 const ts = (name: string) =>
   timestamp(name, { withTimezone: true, mode: "date" });
 const audit = () => ({
@@ -158,10 +196,26 @@ export const businesses = pgTable(
     id: id(),
     ...audit(),
     seedKey: text("seed_key"),
+    /** URL-safe workspace handle, e.g. /app/shree-ganesh-traders. */
+    slug: text("slug"),
+    /** The signup user who owns this workspace; always also an `owner` member. */
+    ownerUserId: uuid("owner_user_id"),
+    plan: orgPlan("plan").default("trial").notNull(),
+    status: orgStatus("status").default("onboarding").notNull(),
+    onboardedAt: ts("onboarded_at"),
+    trialEndsAt: ts("trial_ends_at"),
     name: text("name").notNull(),
     ownerName: text("owner_name").notNull(),
     ownerPhone: text("owner_phone").notNull(),
+    /** Set once the owner's own number passes OTP verification. */
+    ownerPhoneVerifiedAt: ts("owner_phone_verified_at"),
+    /** Each workspace collects into its own VPA; money never touches a platform account. */
     upiVpa: text("upi_vpa"),
+    /** Payee name shown in the debtor's UPI app. */
+    merchantName: text("merchant_name"),
+    /** Timestamp of the workspace's acceptance of the contact-conduct policy. */
+    contactPolicyAcceptedAt: ts("contact_policy_accepted_at"),
+    contactPolicyAcceptedBy: uuid("contact_policy_accepted_by"),
     city: text("city").notNull(),
     defaultLanguage: language("default_language").default("hi").notNull(),
     callWindowStart: time("call_window_start").default("09:00").notNull(),
@@ -205,9 +259,20 @@ export const debtors = pgTable(
     notes: text("notes"),
     firstContactDisclosedAt: ts("first_contact_disclosed_at"),
     lastInboundAt: ts("last_inbound_at"),
+    /**
+     * Contact permission, attested by a named user at import. A debtor with no
+     * basis is never dialled; this is the multi-tenant replacement for the
+     * single-tenant CALL_ALLOWLIST environment variable.
+     */
+    consentBasis: consentBasis("consent_basis"),
+    consentAttestedAt: ts("consent_attested_at"),
+    consentAttestedBy: uuid("consent_attested_by"),
+    /** Free-text provenance, e.g. "Tally export 2026-10-31" or "manual entry". */
+    consentSource: text("consent_source"),
   },
   (t) => [
     uniqueIndex("debtors_business_phone_uq").on(t.businessId, t.phoneE164),
+    index("debtors_consent_idx").on(t.businessId, t.consentBasis),
     unique("debtors_id_business_uq").on(t.id, t.businessId),
     index("debtors_business_status_idx").on(t.businessId, t.status),
     check("debtor_e164", sql`${t.phoneE164} ~ '^[+][1-9][0-9]{6,14}$'`),
@@ -254,6 +319,7 @@ export const promptVersions = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id").references(() => businesses.id),
     agentKey: agentKey("agent_key").notNull(),
     version: integer("version").notNull(),
     body: text("body").notNull(),
@@ -263,6 +329,7 @@ export const promptVersions = pgTable(
     isActive: boolean("is_active").default(false).notNull(),
   },
   (t) => [
+    index("prompt_versions_business_idx").on(t.businessId),
     uniqueIndex("prompt_versions_key_version_uq").on(t.agentKey, t.version),
     uniqueIndex("prompt_versions_active_uq")
       .on(t.agentKey)
@@ -329,6 +396,9 @@ export const promises = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     debtorId: uuid("debtor_id")
       .notNull()
       .references(() => debtors.id),
@@ -342,6 +412,7 @@ export const promises = pgTable(
     resolvedAt: ts("resolved_at"),
   },
   (t) => [
+    index("promises_business_idx").on(t.businessId),
     index("promises_debtor_status_date_idx").on(
       t.debtorId,
       t.status,
@@ -357,6 +428,9 @@ export const callbacks = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     debtorId: uuid("debtor_id")
       .notNull()
       .references(() => debtors.id),
@@ -368,6 +442,7 @@ export const callbacks = pgTable(
     note: text("note"),
   },
   (t) => [
+    index("callbacks_business_idx").on(t.businessId),
     index("callbacks_debtor_idx").on(t.debtorId),
     index("callbacks_call_idx").on(t.callId),
     index("callbacks_status_schedule_idx").on(t.status, t.scheduledFor),
@@ -378,6 +453,9 @@ export const paymentLinks = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     debtorId: uuid("debtor_id")
       .notNull()
       .references(() => debtors.id),
@@ -398,6 +476,7 @@ export const paymentLinks = pgTable(
     expiresAt: ts("expires_at").notNull(),
   },
   (t) => [
+    index("payment_links_business_idx").on(t.businessId),
     uniqueIndex("payment_links_token_uq").on(t.token),
     index("payment_links_debtor_idx").on(t.debtorId),
     index("payment_links_call_idx").on(t.callId),
@@ -414,6 +493,9 @@ export const payments = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     debtorId: uuid("debtor_id")
       .notNull()
       .references(() => debtors.id),
@@ -428,6 +510,7 @@ export const payments = pgTable(
     source: paymentSource("source").notNull(),
   },
   (t) => [
+    index("payments_business_idx").on(t.businessId),
     index("payments_debtor_received_idx").on(t.debtorId, t.receivedAt),
     index("payments_link_idx").on(t.paymentLinkId),
     uniqueIndex("payments_source_ref_uq").on(t.source, t.providerRef),
@@ -439,6 +522,9 @@ export const callTurns = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     callId: uuid("call_id")
       .notNull()
       .references(() => calls.id),
@@ -449,6 +535,7 @@ export const callTurns = pgTable(
     at: ts("at").defaultNow().notNull(),
   },
   (t) => [
+    index("call_turns_business_idx").on(t.businessId),
     uniqueIndex("call_turns_call_idx_uq").on(t.callId, t.idx),
     check("turn_idx_nonnegative", sql`${t.idx} >= 0`),
   ],
@@ -468,6 +555,9 @@ export const toolInvocations = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     callId: uuid("call_id").references(() => calls.id),
     debtorId: uuid("debtor_id").references(() => debtors.id),
     toolName: text("tool_name").notNull(),
@@ -478,6 +568,7 @@ export const toolInvocations = pgTable(
     idempotencyKey: text("idempotency_key").notNull(),
   },
   (t) => [
+    index("tool_invocations_business_idx").on(t.businessId),
     index("tool_invocations_call_idx").on(t.callId),
     index("tool_invocations_debtor_idx").on(t.debtorId),
     index("tool_invocations_idempotency_idx").on(t.idempotencyKey),
@@ -488,6 +579,9 @@ export const messages = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     debtorId: uuid("debtor_id").references(() => debtors.id),
     callId: uuid("call_id").references(() => calls.id),
     toE164: text("to_e164").notNull(),
@@ -504,6 +598,7 @@ export const messages = pgTable(
     error: text("error"),
   },
   (t) => [
+    index("messages_business_idx").on(t.businessId),
     index("messages_debtor_created_idx").on(t.debtorId, t.createdAt),
     index("messages_call_idx").on(t.callId),
     uniqueIndex("messages_provider_id_uq").on(t.provider, t.providerMessageId),
@@ -515,6 +610,9 @@ export const contactDossiers = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     debtorId: uuid("debtor_id")
       .notNull()
       .references(() => debtors.id),
@@ -528,6 +626,7 @@ export const contactDossiers = pgTable(
     model: text("model").notNull(),
   },
   (t) => [
+    index("contact_dossiers_business_idx").on(t.businessId),
     uniqueIndex("dossiers_debtor_uq").on(t.debtorId),
     check("dossier_length", sql`char_length(${t.text}) <= 600`),
   ],
@@ -537,6 +636,9 @@ export const chaseRatings = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     debtorId: uuid("debtor_id")
       .notNull()
       .references(() => debtors.id),
@@ -550,6 +652,7 @@ export const chaseRatings = pgTable(
     computedAt: ts("computed_at").defaultNow().notNull(),
   },
   (t) => [
+    index("chase_ratings_business_idx").on(t.businessId),
     index("ratings_debtor_computed_idx").on(
       t.debtorId,
       t.computedAt.desc(),
@@ -566,6 +669,9 @@ export const complianceEvents = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     debtorId: uuid("debtor_id").references(() => debtors.id),
     callId: uuid("call_id").references(() => calls.id),
     kind: complianceKind("kind").notNull(),
@@ -574,6 +680,7 @@ export const complianceEvents = pgTable(
     at: ts("at").defaultNow().notNull(),
   },
   (t) => [
+    index("compliance_events_business_idx").on(t.businessId),
     index("compliance_debtor_at_idx").on(t.debtorId, t.at),
     index("compliance_call_idx").on(t.callId),
     index("compliance_kind_at_idx").on(t.kind, t.at),
@@ -584,6 +691,9 @@ export const optOuts = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
     debtorId: uuid("debtor_id")
       .notNull()
       .references(() => debtors.id),
@@ -594,13 +704,17 @@ export const optOuts = pgTable(
     clearedAt: ts("cleared_at"),
     clearedBy: text("cleared_by"),
   },
-  (t) => [index("opt_outs_debtor_active_idx").on(t.debtorId, t.clearedAt)],
+  (t) => [
+    index("opt_outs_business_idx").on(t.businessId),
+    index("opt_outs_debtor_active_idx").on(t.debtorId, t.clearedAt),
+  ],
 );
 export const promptPrs = pgTable(
   "prompt_prs",
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id").references(() => businesses.id),
     agentKey: agentKey("agent_key").notNull(),
     baseVersionId: uuid("base_version_id")
       .notNull()
@@ -619,6 +733,7 @@ export const promptPrs = pgTable(
     decidedAt: ts("decided_at"),
   },
   (t) => [
+    index("prompt_prs_business_idx").on(t.businessId),
     index("prompt_prs_base_idx").on(t.baseVersionId),
     index("prompt_prs_agent_status_idx").on(t.agentKey, t.status),
     check("prompt_pr_confidence", sql`${t.confidence} BETWEEN 0 AND 1`),
@@ -629,6 +744,7 @@ export const simRuns = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id").references(() => businesses.id),
     promptVersionId: uuid("prompt_version_id").references(
       () => promptVersions.id,
     ),
@@ -640,6 +756,7 @@ export const simRuns = pgTable(
     completedAt: ts("completed_at").defaultNow().notNull(),
   },
   (t) => [
+    index("sim_runs_business_idx").on(t.businessId),
     index("sim_runs_prompt_completed_idx").on(
       t.promptVersionId,
       t.completedAt.desc(),
@@ -673,6 +790,7 @@ export const llmCalls = pgTable(
   {
     id: id(),
     ...audit(),
+    businessId: uuid("business_id").references(() => businesses.id),
     estimatedCostUsd: numeric("estimated_cost_usd", {
       precision: 18,
       scale: 9,
@@ -691,13 +809,17 @@ export const llmCalls = pgTable(
     error: text("error"),
     at: ts("at").defaultNow().notNull(),
   },
-  (t) => [index("llm_calls_task_at_idx").on(t.task, t.at)],
+  (t) => [
+    index("llm_calls_business_idx").on(t.businessId),
+    index("llm_calls_task_at_idx").on(t.task, t.at),
+  ],
 );
 export const events = pgTable(
   "events",
   {
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
     ...audit(),
+    businessId: uuid("business_id").references(() => businesses.id),
     legacyId: uuid("legacy_id"),
     type: text("type").notNull(),
     entityId: text("entity_id"),
@@ -707,10 +829,117 @@ export const events = pgTable(
     at: ts("at").defaultNow().notNull(),
   },
   (t) => [
+    index("events_business_idx").on(t.businessId),
     index("events_id_desc_idx").on(t.id.desc()),
     uniqueIndex("events_legacy_id_uq").on(t.legacyId),
     index("events_created_at_idx").on(t.createdAt),
     index("events_debtor_idx").on(t.debtorId, t.id.desc()),
     index("events_call_idx").on(t.callId),
+  ],
+);
+
+/**
+ * Mirror of Supabase `auth.users`. Chase never stores passwords: identity,
+ * password hashing, OAuth and email verification all live in Supabase Auth, and
+ * this row is upserted from the verified JWT on each sign-in so that application
+ * tables can carry real foreign keys to a user.
+ */
+export const appUsers = pgTable(
+  "app_users",
+  {
+    // Deliberately not defaultRandom(): the id is the Supabase auth user id.
+    id: uuid("id").primaryKey(),
+    ...audit(),
+    email: text("email").notNull(),
+    fullName: text("full_name"),
+    avatarUrl: text("avatar_url"),
+    lastSeenAt: ts("last_seen_at"),
+  },
+  (t) => [uniqueIndex("app_users_email_uq").on(t.email)],
+);
+
+/** Which users may act inside which workspace, and with what authority. */
+export const orgMembers = pgTable(
+  "org_members",
+  {
+    id: id(),
+    ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    role: memberRole("role").default("operator").notNull(),
+    status: memberStatus("status").default("active").notNull(),
+    invitedByUserId: uuid("invited_by_user_id").references(() => appUsers.id),
+    lastActiveAt: ts("last_active_at"),
+  },
+  (t) => [
+    uniqueIndex("org_members_business_user_uq").on(t.businessId, t.userId),
+    index("org_members_user_idx").on(t.userId, t.status),
+    index("org_members_business_role_idx").on(t.businessId, t.role),
+  ],
+);
+
+/** Pending teammate invitations. Only the SHA-256 of the token is stored. */
+export const orgInvites = pgTable(
+  "org_invites",
+  {
+    id: id(),
+    ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: memberRole("role").default("operator").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: ts("expires_at").notNull(),
+    invitedByUserId: uuid("invited_by_user_id")
+      .notNull()
+      .references(() => appUsers.id),
+    acceptedAt: ts("accepted_at"),
+    acceptedByUserId: uuid("accepted_by_user_id").references(() => appUsers.id),
+    revokedAt: ts("revoked_at"),
+  },
+  (t) => [
+    uniqueIndex("org_invites_token_uq").on(t.tokenHash),
+    index("org_invites_business_idx").on(t.businessId),
+    uniqueIndex("org_invites_pending_uq")
+      .on(t.businessId, t.email)
+      .where(sql`accepted_at IS NULL AND revoked_at IS NULL`),
+  ],
+);
+
+/**
+ * One-time codes used to prove that a workspace controls the number it wants
+ * Chase to call (the owner's own phone, or a nominated test number).
+ */
+export const phoneVerifications = pgTable(
+  "phone_verifications",
+  {
+    id: id(),
+    ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    phoneE164: text("phone_e164").notNull(),
+    purpose: verificationPurpose("purpose").default("owner_phone").notNull(),
+    codeHash: text("code_hash").notNull(),
+    expiresAt: ts("expires_at").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    verifiedAt: ts("verified_at"),
+    requestedByUserId: uuid("requested_by_user_id").references(
+      () => appUsers.id,
+    ),
+  },
+  (t) => [
+    index("phone_verifications_business_idx").on(t.businessId, t.phoneE164),
+    index("phone_verifications_expiry_idx").on(t.expiresAt),
+    check(
+      "phone_verification_e164",
+      sql`${t.phoneE164} ~ '^[+][1-9][0-9]{6,14}$'`,
+    ),
+    check("phone_verification_attempts", sql`${t.attempts} >= 0`),
   ],
 );

@@ -151,6 +151,7 @@ export async function processCall(
           .limit(1);
         if (!existingPromise)
           await tx.insert(promises).values({
+            businessId: row.debtor.businessId,
             debtorId: row.debtor.id,
             callId,
             amountPaise: BigInt(analysis.promise.amount_rupees) * 100n,
@@ -176,6 +177,7 @@ export async function processCall(
           .limit(1);
         if (!existing) {
           await tx.insert(optOuts).values({
+            businessId: row.debtor.businessId,
             debtorId: row.debtor.id,
             scope: "all",
             reason: "Inferred from completed call transcript",
@@ -186,6 +188,7 @@ export async function processCall(
             .set({ status: "do_not_contact" })
             .where(eq(debtors.id, row.debtor.id));
           await tx.insert(complianceEvents).values({
+            businessId: row.debtor.businessId,
             debtorId: row.debtor.id,
             callId,
             kind: "opt_out_inferred",
@@ -217,6 +220,7 @@ export async function processCall(
           .limit(1);
         if (!existingDispute)
           await tx.insert(complianceEvents).values({
+            businessId: row.debtor.businessId,
             debtorId: row.debtor.id,
             callId,
             kind: "dispute_hold",
@@ -239,6 +243,7 @@ export async function processCall(
           .limit(1);
         if (!existingFlag)
           await tx.insert(complianceEvents).values({
+            businessId: row.debtor.businessId,
             debtorId: row.debtor.id,
             callId,
             kind: "post_call_flag",
@@ -259,6 +264,7 @@ export async function processCall(
         await new ConfiguredMessaging().send({
           to: row.business.ownerPhone,
           text: `High-severity call review for ${row.debtor.shopName}: ${flag.type}. Review in Chase.`,
+          businessId: row.debtor.businessId,
           debtorId: row.debtor.id,
           callId,
           kind: "compliance_alert",
@@ -307,6 +313,7 @@ export async function processCall(
       .set({ rationale })
       .where(eq(chaseRatings.id, rating.id));
     await emitEvent("rating.changed", {
+      businessId: row.debtor.businessId,
       debtorId: row.debtor.id,
       callId,
       payload: { from: before?.score ?? null, to: rating.score, rationale },
@@ -316,6 +323,7 @@ export async function processCall(
       .set({ processedAt: new Date(), processingStartedAt: null })
       .where(and(eq(calls.id, callId), isNull(calls.processedAt)));
     await emitEvent("call.analyzed", {
+      businessId: row.debtor.businessId,
       debtorId: row.debtor.id,
       callId,
       payload: { ownerSummary: analysis.owner_summary },

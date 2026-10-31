@@ -28,6 +28,11 @@ import {
 } from "./ui/sheet";
 import { ThemeToggle } from "./theme-toggle";
 import { ReadOnlyProvider } from "./read-only-context";
+import {
+  AccountMenu,
+  type AccountUser,
+  type AccountWorkspace,
+} from "./account-menu";
 
 const navigation = [
   ["/dashboard", "Overview", LayoutDashboard],
@@ -43,9 +48,14 @@ const navigation = [
 export function DashboardShell({
   children,
   readOnly,
+  user,
+  workspace,
 }: {
   children: React.ReactNode;
   readOnly: boolean;
+  user: AccountUser;
+  workspace: AccountWorkspace;
+  workspaces?: { id: string; name: string }[];
 }) {
   const pathname = usePathname();
   const [hidden, setHidden] = useState(false);
@@ -225,8 +235,8 @@ export function DashboardShell({
                   {sidebar}
                 </SheetContent>
               </Sheet>
-              <span className="hidden text-xs text-muted-foreground sm:inline">
-                Workspace
+              <span className="hidden max-w-[22ch] truncate text-xs text-muted-foreground sm:inline">
+                {workspace.name}
               </span>
               <span className="hidden text-xs text-muted-foreground/50 sm:inline">
                 /
@@ -238,7 +248,7 @@ export function DashboardShell({
             <div className="flex shrink-0 items-center gap-1.5">
               {readOnly && (
                 <span className="mr-2 rounded-md border px-2 py-1 text-[10px] text-muted-foreground">
-                  Read-only demo
+                  Read-only access
                 </span>
               )}
               <Link
@@ -265,6 +275,7 @@ export function DashboardShell({
                 )}
               </Button>
               <ThemeToggle />
+              <AccountMenu user={user} workspace={workspace} />
             </div>
           </header>
           <div id="workspace-content" className="min-w-0">

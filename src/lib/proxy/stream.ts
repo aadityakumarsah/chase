@@ -5,6 +5,7 @@ import { providerKey, writeAudit } from "@/lib/llm";
 import { modelFor } from "@/lib/llm/routing";
 import type { Usage } from "@/lib/llm/types";
 import { getDb } from "@/lib/db";
+import { callBusinessId } from "@/lib/db/tenant";
 import { complianceEvents } from "@/lib/db/schema";
 import { emitEvent } from "@/lib/events";
 import { guardSentence, takeCompleteSentences } from "./guard";
@@ -38,6 +39,7 @@ async function logRewrite(callId: string, debtorId: string | null) {
   await getDb()
     .insert(complianceEvents)
     .values({
+      businessId: callBusinessId(callId),
       debtorId,
       callId,
       kind: "supervisor_rewrite",

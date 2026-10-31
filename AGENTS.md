@@ -43,10 +43,13 @@ Postgres + Drizzle ORM and drizzle-kit migrations; postgres-js driver. Zod at en
 ## Folder map
 
 - src/app/page.tsx — public Chase product homepage.
+- src/app/signup/, src/app/auth/, src/app/onboarding/, src/app/invite/ — accounts: sign-up, OAuth callback, sign-out, workspace creation, invitation acceptance.
+- src/lib/tenancy/ — workspaces, membership roles, the API authorization guard, onboarding, team invitations and per-workspace settings.
+- src/lib/supabase/ — server, browser and admin Supabase clients.
 - src/app/(dashboard)/ — protected dashboard pages; overview at /dashboard.
 - src/components/marketing/ — public landing page, brand and scoped visual styles.
 - public/assets/ — optimized copies of the supplied Chase brand assets.
-- src/app/login/ — passcode login and signed-session POST.
+- src/app/login/ — Supabase sign-in (email/password and Google).
 - src/app/pay/[token]/ — public payment page; inert until payment implementation.
 - src/app/api/ — health, event feed and later authenticated tools/webhooks.
 - src/proxy.ts — request authentication interceptor.
@@ -67,12 +70,13 @@ Postgres + Drizzle ORM and drizzle-kit migrations; postgres-js driver. Zod at en
 
 - Money in domain/storage/API is **integer paise**, never floating-point rupees. Convert only for display. Spoken helpers explicitly accept display rupees to match spokenAmountHi(12500) = “12,500 रुपये”; use paiseToRupees first for domain money.
 - Store UTC instants, show Asia/Kolkata. Wall-clock Date values from toIST/nowIST are display-only. Windows are start-inclusive/end-exclusive. Validate the actual Bolna-rounded slot before scheduling.
-- Phones are E.164. Normalize Indian mobile input and mask display numbers. Never dial outside CALL_ALLOWLIST in demo mode, including owner and transfer destinations; an empty allowlist denies all.
+- Phones are E.164. Normalize Indian mobile input and mask display numbers. Never dial outside CALL_ALLOWLIST in demo mode, including owner and transfer destinations; an empty allowlist denies all. Outside demo mode, permission to dial comes from the per-debtor consent basis recorded at import, and an owner brief requires an OTP-verified owner number.
 - Validate every external boundary with Zod. Fail clearly without echoing sensitive input. LLM output must be typed and validated before state changes.
 - Never print, log, commit or hard-code keys, tokens, passcodes or connection credentials. Never overwrite .env. Only append when explicitly requested. .env and .env.* except .env.example are ignored. Do not log raw SDK errors or headers.
 - Canonical env names and one-line documentation live in .env.example; all example values are empty. src/lib/env.ts owns defaults/aliases. Original .env names stay untouched.
 - Small focused modules; explain why in comments. Events append only, with database triggers rejecting mutations; production roles must not own or disable the triggers. Validate/idempotently handle external effects in later parts.
-- Signed, expiring HttpOnly admin cookie; same-origin login POST; secure cookie when APP_BASE_URL is HTTPS. Process-local login throttling is for the demo, not a distributed production limiter.
+- **Multi-tenant by default.** Identity is Supabase Auth; authority is workspace membership. `requireMember()` in src/lib/tenancy/guard.ts is the only authorization gate for workspace routes, and the workspace it returns is the only one a request may touch — never read a workspace id from a request body or query string. Every tenant-scoped query filters on `business_id`. New tables that hold customer data must carry `business_id`. See docs/multi-tenancy.md.
+- Row level security is enabled and forced on every table with no permissive policies, and the PostgREST roles have no privileges. The browser must never query Postgres directly. Process-local throttling is for the demo, not a distributed production limiter.
 - Only caller-confirmed identity permits debt disclosure; AI disclosure and respectful language are mandatory. Enforce opt-outs, attempt caps, hours, consent and immutable compliance prompt sections before implementing real calls. Part 1 implements only the allowlist and time guards, not the complete calling policy.
 - Trust current official docs and live API over a stale prompt; document adaptations in DECISIONS.md. Work autonomously; ask only for a true user-only blocker. Do not place real calls as a “smoke check”.
 

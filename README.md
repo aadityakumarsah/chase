@@ -4,7 +4,9 @@
 
 ![Chase stage demo](docs/assets/chase-stage.gif)
 
-**Live app:** [chase-liard.vercel.app](https://chase-liard.vercel.app) · **Source:** [github.com/aadityakumarsah/chase](https://github.com/aadityakumarsah/chase) · Read-only passcode distribution is tracked in [docs/SUBMISSION.md](docs/SUBMISSION.md).
+**Live app:** [chase-liard.vercel.app](https://chase-liard.vercel.app) · **Source:** [github.com/aadityakumarsah/chase](https://github.com/aadityakumarsah/chase)
+
+Chase is multi-tenant: anyone can sign up with Google or an email address, create a workspace, invite teammates and run their own receivables. Identity is Supabase Auth; every workspace's data, calling policy and merchant UPI ID are its own. See [docs/multi-tenancy.md](docs/multi-tenancy.md).
 
 ## The problem
 

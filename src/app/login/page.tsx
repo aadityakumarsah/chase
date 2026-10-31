@@ -1,15 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { AuthForm } from "@/components/auth/auth-form";
 import { ChaseBrand } from "@/components/marketing/brand";
 import styles from "@/components/marketing/marketing.module.css";
 
 export default async function Login({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
   return (
     <main className={`${styles.site} ${styles.signIn}`}>
       <section className={styles.signInStory}>
@@ -41,28 +42,14 @@ export default async function Login({
         <div>
           <span className={styles.eyebrow}>YOUR CHASE WORKSPACE</span>
           <h2>Good to have you back.</h2>
-          <p>Enter your admin or read-only demo passcode to continue.</p>
-          <form action="/login/session" method="post">
-            <label htmlFor="passcode">Workspace passcode</label>
-            <input
-              id="passcode"
-              name="passcode"
-              type="password"
-              autoComplete="current-password"
-              required
-              maxLength={512}
-              aria-describedby={error ? "login-error" : undefined}
-            />
-            {error && (
-              <p id="login-error" role="alert">
-                That passcode wasn’t accepted. Please try again.
-              </p>
-            )}
-            <button type="submit" className={styles.primaryButton}>
-              Open workspace <ArrowRight size={16} />
-            </button>
-          </form>
-          <p>Secure access. Your session expires after 8 hours.</p>
+          {error === "unconfigured" ? (
+            <p role="alert" className={styles.authError}>
+              Sign-in is not configured in this deployment yet.
+            </p>
+          ) : (
+            <p>Sign in to pick up where your follow-ups left off.</p>
+          )}
+          <AuthForm mode="signin" next={next} />
           <Link href="/">
             <ArrowLeft size={14} />
             Back to Chase <ArrowUpRight size={13} />

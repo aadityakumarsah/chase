@@ -5,7 +5,7 @@ import {
   rejectPromptPR,
   rollbackPromptPR,
 } from "@/lib/promptprs";
-import { requireDashboardAdmin } from "@/lib/dashboard/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 
 const bodySchema = z.object({
   action: z.enum(["approve", "reject", "rollback"]),
@@ -15,8 +15,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const denied = requireDashboardAdmin(request, { mutation: true });
-  if (denied) return denied;
+  const auth = await requireMember(request, { mutation: true });
+  if (!auth.ok) return auth.response;
   try {
     const id = z.uuid().parse((await params).id);
     const { action } = bodySchema.parse(await request.json());

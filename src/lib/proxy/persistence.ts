@@ -1,5 +1,6 @@
 import { eq, max, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import { callBusinessId } from "@/lib/db/tenant";
 import { calls, callTurns, debtors, proxyCallStates } from "@/lib/db/schema";
 import { emitEvent } from "@/lib/events";
 
@@ -32,6 +33,7 @@ export async function appendCallTurn(input: {
     const [row] = await tx
       .insert(callTurns)
       .values({
+        businessId: callBusinessId(input.callId),
         callId: input.callId,
         idx: (latest?.idx ?? -1) + 1,
         speaker: input.speaker,

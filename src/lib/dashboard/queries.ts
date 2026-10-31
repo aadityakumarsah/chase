@@ -1,4 +1,4 @@
-import { desc, eq, sql as dsql } from "drizzle-orm";
+import { and, desc, eq, sql as dsql } from "drizzle-orm";
 import { z } from "zod";
 import { evaluateContact } from "@/lib/compliance/gate";
 import { explainRating, type RatingResult } from "@/lib/chase/rating";
@@ -66,10 +66,14 @@ type QueueDbRow = {
   last_attempt_at: Date | string | null;
   opted_out: boolean;
   active_promise_for: string | null;
+  consent_basis: string | null;
 };
 
 /** One ranked query supplies every gate feature, avoiding per-debtor lookups. */
-export async function dashboardQueue(now = new Date()): Promise<QueueItem[]> {
+export async function dashboardQueue(
+  businessId: string,
+  now = new Date(),
+): Promise<QueueItem[]> {
   const client = getSql();
   const today = istDay(now);
   const dayStart = istInstant(today, "00:00").toISOString();
@@ -97,7 +101,7 @@ export async function dashboardQueue(now = new Date()): Promise<QueueItem[]> {
       select debtor_id, true opted_out from opt_outs where cleared_at is null group by debtor_id
     )
     select d.id debtor_id, d.shop_name, d.contact_name, d.phone_e164,
-      d.preferred_language, d.status, d.first_contact_disclosed_at,
+      d.preferred_language, d.status, d.first_contact_disclosed_at, d.consent_basis,
       b.id business_id, b.call_window_start::text, b.call_window_end::text,
       b.max_attempts_per_day, b.max_attempts_per_week, b.min_gap_hours, b.demo_window_override,
       coalesce(i.outstanding_paise,'0') outstanding_paise, coalesce(i.days_past_due,0) days_past_due,
@@ -114,6 +118,7 @@ export async function dashboardQueue(now = new Date()): Promise<QueueItem[]> {
     left join attempts a on a.debtor_id=d.id
     left join active_promises p on p.debtor_id=d.id
     left join active_optouts o on o.debtor_id=d.id
+    where d.business_id = ${businessId}
     order by r.score desc nulls last, d.shop_name
   `) as unknown as QueueDbRow[];
   const env = getEnv();
@@ -145,6 +150,7 @@ export async function dashboardQueue(now = new Date()): Promise<QueueItem[]> {
       demoMode: env.DEMO_MODE,
       allowlist: env.CALL_ALLOWLIST,
       demoOverride: row.demo_window_override,
+      consentBasis: row.consent_basis,
     });
     return {
       rank: index + 1,
@@ -177,6 +183,7 @@ export async function dashboardQueue(now = new Date()): Promise<QueueItem[]> {
 }
 
 async function eventRows(
+  businessId: string,
   options: {
     callId?: string;
     debtorId?: string;
@@ -185,7 +192,8 @@ async function eventRows(
   } = {},
 ) {
   const db = getDb();
-  const filters = [];
+  // Tenant scope first: the feed must never mix workspaces.
+  const filters = [dsql`${events.businessId}=${businessId}`];
   if (options.callId) filters.push(dsql`${events.callId}=${options.callId}`);
   if (options.debtorId)
     filters.push(dsql`${events.debtorId}=${options.debtorId}`);
@@ -209,6 +217,7 @@ async function eventRows(
 }
 
 export async function dashboardEvents(
+  businessId: string,
   options: {
     after?: string;
     limit?: number;
@@ -216,7 +225,7 @@ export async function dashboardEvents(
     debtorId?: string;
   } = {},
 ) {
-  return eventRows({
+  return eventRows(businessId, {
     ...options,
     after: options.after ? BigInt(options.after) : undefined,
   });
@@ -249,7 +258,7 @@ function ratingExplanation(
   });
 }
 
-async function liveCall(): Promise<LiveCall | null> {
+async function liveCall(businessId: string): Promise<LiveCall | null> {
   const db = getDb();
   const [row] = await db
     .select({
@@ -261,6 +270,7 @@ async function liveCall(): Promise<LiveCall | null> {
     .from(calls)
     .innerJoin(businesses, eq(businesses.id, calls.businessId))
     .leftJoin(debtors, eq(debtors.id, calls.debtorId))
+    .where(eq(calls.businessId, businessId))
     .orderBy(
       dsql`case when ${calls.status} in ('queued','initiated','ringing','in-progress','in_progress','call-disconnected') then 0 else 1 end`,
       desc(calls.createdAt),
@@ -268,14 +278,17 @@ async function liveCall(): Promise<LiveCall | null> {
     .limit(1);
   if (!row) return null;
   const [eventList, messageList, [link]] = await Promise.all([
-    eventRows({ callId: row.call.id, limit: 50 }),
+    eventRows(businessId, { callId: row.call.id, limit: 50 }),
     db
       .select()
       .from(messages)
       .where(
-        row.call.debtorId
-          ? eq(messages.debtorId, row.call.debtorId)
-          : eq(messages.callId, row.call.id),
+        and(
+          eq(messages.businessId, businessId),
+          row.call.debtorId
+            ? eq(messages.debtorId, row.call.debtorId)
+            : eq(messages.callId, row.call.id),
+        ),
       )
       .orderBy(desc(messages.createdAt))
       .limit(20),
@@ -317,6 +330,7 @@ async function liveCall(): Promise<LiveCall | null> {
 }
 
 export async function dashboardSummary(
+  businessId: string,
   now = new Date(),
 ): Promise<DashboardSummary> {
   const db = getDb();
@@ -324,30 +338,34 @@ export async function dashboardSummary(
   const today = istDay(now);
   const start = istInstant(today, "00:00").toISOString();
   const [[business], metrics, [block], active] = await Promise.all([
-    db.select().from(businesses).orderBy(businesses.createdAt).limit(1),
+    db.select().from(businesses).where(eq(businesses.id, businessId)).limit(1),
     getSql()`
       select
-        coalesce((select sum(amount_paise-paid_paise) from invoices where status not in ('paid','written_off')),0)::text outstanding,
-        (select count(distinct debtor_id)::int from invoices where status not in ('paid','written_off')) debtors,
-        coalesce((select sum(amount_paise) from promises where promised_for=${today} and status='pending'),0)::text promised,
-        coalesce((select sum(amount_paise) from payments where received_at>=${start}),0)::text collected,
-        coalesce((select sum(amount_paise) from payments where received_at>=${start} and source='simulated'),0)::text simulated_collected,
-        (select count(*)::int from calls where created_at>=${start} and purpose='collection') calls,
-        (select count(*)::int from calls where created_at>=${start} and purpose='collection' and connected) connected,
-        (select count(*)::int from compliance_events where at>=${start} and kind='gate_blocked') blocked,
-        (select count(*)::int from opt_outs where at>=${start}) optouts
+        coalesce((select sum(amount_paise-paid_paise) from invoices where business_id=${businessId} and status not in ('paid','written_off')),0)::text outstanding,
+        (select count(distinct debtor_id)::int from invoices where business_id=${businessId} and status not in ('paid','written_off')) debtors,
+        coalesce((select sum(amount_paise) from promises where business_id=${businessId} and promised_for=${today} and status='pending'),0)::text promised,
+        coalesce((select sum(amount_paise) from payments where business_id=${businessId} and received_at>=${start}),0)::text collected,
+        coalesce((select sum(amount_paise) from payments where business_id=${businessId} and received_at>=${start} and source='simulated'),0)::text simulated_collected,
+        (select count(*)::int from calls where business_id=${businessId} and created_at>=${start} and purpose='collection') calls,
+        (select count(*)::int from calls where business_id=${businessId} and created_at>=${start} and purpose='collection' and connected) connected,
+        (select count(*)::int from compliance_events where business_id=${businessId} and at>=${start} and kind='gate_blocked') blocked,
+        (select count(*)::int from opt_outs where business_id=${businessId} and at>=${start}) optouts
     `,
     db
       .select({ event: complianceEvents, shopName: debtors.shopName })
       .from(complianceEvents)
       .leftJoin(debtors, eq(debtors.id, complianceEvents.debtorId))
-      .where(eq(complianceEvents.kind, "gate_blocked"))
+      .where(
+        and(
+          eq(complianceEvents.businessId, businessId),
+          eq(complianceEvents.kind, "gate_blocked"),
+        ),
+      )
       .orderBy(desc(complianceEvents.at))
       .limit(1),
-    liveCall(),
+    liveCall(businessId),
   ]);
-  if (!business)
-    throw new Error("Seed a business before opening the dashboard");
+  if (!business) throw new Error("Workspace not found");
   const metric =
     (metrics as unknown as Array<Record<string, unknown>>)[0] ?? {};
   const attempted = asInt(metric.calls);
@@ -399,10 +417,13 @@ export const debtorFiltersSchema = z.object({
   search: z.string().max(100).optional(),
 });
 
-export async function debtorList(input: z.input<typeof debtorFiltersSchema>) {
+export async function debtorList(
+  businessId: string,
+  input: z.input<typeof debtorFiltersSchema>,
+) {
   const filters = debtorFiltersSchema.parse(input);
   const needle = filters.search?.trim().toLocaleLowerCase();
-  return (await dashboardQueue()).filter(
+  return (await dashboardQueue(businessId)).filter(
     (item) =>
       (!filters.band || item.band === filters.band) &&
       (!filters.language || item.language === filters.language) &&
@@ -414,14 +435,14 @@ export async function debtorList(input: z.input<typeof debtorFiltersSchema>) {
   );
 }
 
-export async function debtorDetail(id: string) {
+export async function debtorDetail(businessId: string, id: string) {
   z.uuid().parse(id);
   const db = getDb();
   const [base] = await db
     .select({ debtor: debtors, business: businesses })
     .from(debtors)
     .innerJoin(businesses, eq(businesses.id, debtors.businessId))
-    .where(eq(debtors.id, id));
+    .where(and(eq(debtors.id, id), eq(debtors.businessId, businessId)));
   if (!base) return null;
   const [
     invoiceRows,
@@ -575,7 +596,7 @@ export async function debtorDetail(id: string) {
   };
 }
 
-export async function callDetail(id: string) {
+export async function callDetail(businessId: string, id: string) {
   z.uuid().parse(id);
   const db = getDb();
   const [row] = await db
@@ -583,7 +604,7 @@ export async function callDetail(id: string) {
     .from(calls)
     .leftJoin(debtors, eq(debtors.id, calls.debtorId))
     .innerJoin(businesses, eq(businesses.id, calls.businessId))
-    .where(eq(calls.id, id));
+    .where(and(eq(calls.id, id), eq(calls.businessId, businessId)));
   if (!row) return null;
   const [tools, callEvents] = await Promise.all([
     getDb()
@@ -591,7 +612,7 @@ export async function callDetail(id: string) {
       .from(toolInvocations)
       .where(eq(toolInvocations.callId, id))
       .orderBy(toolInvocations.createdAt),
-    eventRows({ callId: id, limit: 100 }),
+    eventRows(businessId, { callId: id, limit: 100 }),
   ]);
   return {
     call: {
@@ -620,21 +641,27 @@ export async function callDetail(id: string) {
   };
 }
 
-export async function complianceDashboard() {
+export async function complianceDashboard(businessId: string) {
   const db = getDb();
   const [[business], ledger, activeStops, disputes] = await Promise.all([
-    db.select().from(businesses).orderBy(businesses.createdAt).limit(1),
+    db.select().from(businesses).where(eq(businesses.id, businessId)).limit(1),
     db
       .select({ event: complianceEvents, shopName: debtors.shopName })
       .from(complianceEvents)
       .leftJoin(debtors, eq(debtors.id, complianceEvents.debtorId))
+      .where(eq(complianceEvents.businessId, businessId))
       .orderBy(desc(complianceEvents.at))
       .limit(250),
     db
       .select({ optOut: optOuts, shopName: debtors.shopName })
       .from(optOuts)
       .innerJoin(debtors, eq(debtors.id, optOuts.debtorId))
-      .where(dsql`${optOuts.clearedAt} is null`)
+      .where(
+        and(
+          eq(optOuts.businessId, businessId),
+          dsql`${optOuts.clearedAt} is null`,
+        ),
+      )
       .orderBy(desc(optOuts.at)),
     db
       .select({
@@ -643,7 +670,9 @@ export async function complianceDashboard() {
         status: debtors.status,
       })
       .from(debtors)
-      .where(eq(debtors.status, "dispute")),
+      .where(
+        and(eq(debtors.businessId, businessId), eq(debtors.status, "dispute")),
+      ),
   ]);
   return {
     policy: business
@@ -683,10 +712,11 @@ const percentile = (sorted: number[], p: number) =>
     ? sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * p) - 1)]!
     : 0;
 
-export async function aiOps() {
+export async function aiOps(businessId: string) {
   const rows = await getDb()
     .select()
     .from(llmCalls)
+    .where(eq(llmCalls.businessId, businessId))
     .orderBy(desc(llmCalls.at))
     .limit(5000);
   const groups = new Map<string, typeof rows>();
@@ -767,25 +797,33 @@ export async function aiOps() {
   };
 }
 
-export async function settingsDashboard() {
+export async function settingsDashboard(businessId: string) {
   const env = getEnv();
   const db = getDb();
   const [syncRows, [webhook], [tool]] = await Promise.all([
     db
       .select({ payload: events.payload, at: events.at })
       .from(events)
-      .where(eq(events.type, "agent.synced"))
+      .where(
+        and(eq(events.businessId, businessId), eq(events.type, "agent.synced")),
+      )
       .orderBy(desc(events.at))
       .limit(20),
     db
       .select({ at: events.at, payload: events.payload })
       .from(events)
-      .where(eq(events.type, "webhook.received"))
+      .where(
+        and(
+          eq(events.businessId, businessId),
+          eq(events.type, "webhook.received"),
+        ),
+      )
       .orderBy(desc(events.at))
       .limit(1),
     db
       .select({ name: toolInvocations.toolName, at: toolInvocations.createdAt })
       .from(toolInvocations)
+      .where(eq(toolInvocations.businessId, businessId))
       .orderBy(desc(toolInvocations.createdAt))
       .limit(1),
   ]);

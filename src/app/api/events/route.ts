@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireDashboardAdmin } from "@/lib/dashboard/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 import { dashboardEvents } from "@/lib/dashboard/queries";
 export const dynamic = "force-dynamic";
 const querySchema = z.object({
@@ -21,14 +21,14 @@ const querySchema = z.object({
   debtorId: z.uuid().optional(),
 });
 export async function GET(request: NextRequest) {
-  const denied = requireDashboardAdmin(request);
-  if (denied) return denied;
+  const auth = await requireMember(request);
+  if (!auth.ok) return auth.response;
   const parsed = querySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams),
   );
   if (!parsed.success)
     return NextResponse.json({ error: "Invalid event query" }, { status: 400 });
-  const rows = await dashboardEvents({
+  const rows = await dashboardEvents(auth.businessId, {
     after: parsed.data.after ?? parsed.data.afterId,
     limit: parsed.data.limit,
     callId: parsed.data.callId,

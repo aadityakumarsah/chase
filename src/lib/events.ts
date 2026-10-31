@@ -4,6 +4,9 @@ import { getDb, type DbExecutor } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 import { redact } from "@/lib/log";
 const eventSchema = z.object({
+  // Tenant attribution for the audit feed. Optional because a few platform-level
+  // events (migrations, provider syncs) belong to no single workspace.
+  businessId: z.uuid().optional(),
   debtorId: z.uuid().optional(),
   callId: z.uuid().optional(),
   payload: z.record(z.string(), z.json()),
@@ -20,6 +23,7 @@ export const eventQuerySchema = z.object({
 const serialize = (event: typeof events.$inferSelect) => ({
   id: event.id.toString(),
   type: event.type,
+  businessId: event.businessId,
   debtorId: event.debtorId,
   callId: event.callId,
   payload: event.payload,

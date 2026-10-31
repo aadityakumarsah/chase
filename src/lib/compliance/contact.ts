@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb, type DbExecutor } from "@/lib/db";
+import { debtorBusinessId } from "@/lib/db/tenant";
 import { businesses, complianceEvents, debtors } from "@/lib/db/schema";
 import { getEnv, type Env } from "@/lib/env";
 import { emitEvent } from "@/lib/events";
@@ -52,6 +53,8 @@ export async function evaluateDebtorContact(
     demoMode: env.DEMO_MODE,
     allowlist: env.CALL_ALLOWLIST,
     demoOverride: row.business.demoWindowOverride,
+    consentBasis: row.debtor.consentBasis,
+    ownerPhoneVerified: Boolean(row.business.ownerPhoneVerifiedAt),
   });
   if (options.record !== false)
     await recordContactDecision(debtorId, decision, {
@@ -69,6 +72,7 @@ export async function recordContactDecision(
   const db = options.db ?? getDb();
   const failed = decision.rules.filter((rule) => !rule.passed);
   await db.insert(complianceEvents).values({
+    businessId: debtorBusinessId(debtorId),
     debtorId,
     callId: options.callId,
     kind: decision.allowed ? "gate_allowed" : "gate_blocked",
@@ -80,6 +84,7 @@ export async function recordContactDecision(
   });
   if (decision.demoOverrideUsed)
     await db.insert(complianceEvents).values({
+      businessId: debtorBusinessId(debtorId),
       debtorId,
       callId: options.callId,
       kind: "demo_override",

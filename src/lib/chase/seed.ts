@@ -55,12 +55,15 @@ async function resetDemo(tx: Transaction) {
   // is restored inside the same transaction; failures roll everything back.
   await tx.execute(sql`ALTER TABLE events DISABLE TRIGGER events_no_truncate`);
   await tx.execute(
-    sql`TRUNCATE TABLE events, briefs, compliance_events, call_turns, proxy_call_states, tool_invocations, messages, promises, callbacks, payments, payment_links, opt_outs, chase_ratings, contact_dossiers, calls, invoices, debtors, businesses, prompt_prs, sim_runs, prompt_versions, llm_calls RESTART IDENTITY`,
+    // org_members/org_invites/phone_verifications reference businesses, so they
+    // must be in the same TRUNCATE. app_users is deliberately absent: resetting
+    // sample data must never delete real accounts.
+    sql`TRUNCATE TABLE events, briefs, compliance_events, call_turns, proxy_call_states, tool_invocations, messages, promises, callbacks, payments, payment_links, opt_outs, chase_ratings, contact_dossiers, calls, invoices, debtors, org_invites, org_members, phone_verifications, businesses, prompt_prs, sim_runs, prompt_versions, llm_calls RESTART IDENTITY`,
   );
   await tx.execute(sql`ALTER TABLE events ENABLE TRIGGER events_no_truncate`);
 }
 export async function seedPortfolio(
-  options: { reset?: boolean; now?: Date } = {},
+  options: { reset?: boolean; now?: Date; ownerUserId?: string } = {},
 ) {
   const env = getEnv();
   const now = options.now ?? new Date();
@@ -85,11 +88,25 @@ export async function seedPortfolio(
         name: env.BUSINESS_NAME ?? "Shree Ganesh Traders",
         ownerName: env.OWNER_NAME ?? "Rakesh Agarwal",
         ownerPhone: env.OWNER_PHONE ?? "+919000009999",
+        // Seed data is self-contained; merchant details are per-workspace now.
         upiVpa: env.MERCHANT_UPI_VPA ?? null,
+        merchantName: env.MERCHANT_NAME ?? null,
         city: "Pune",
         defaultLanguage: "hi",
+        // Sample data is only reachable once it belongs to a real account.
+        ownerUserId: options.ownerUserId ?? null,
+        status: options.ownerUserId ? "active" : "onboarding",
+        onboardedAt: options.ownerUserId ? now : null,
+        slug: `sample-portfolio-${Date.now().toString(36)}`,
       })
       .returning({ id: s.businesses.id });
+    if (options.ownerUserId)
+      await tx.insert(s.orgMembers).values({
+        businessId: business.id,
+        userId: options.ownerUserId,
+        role: "owner",
+        status: "active",
+      });
     for (const agent of ["collections", "brief"] as const) {
       const body = `PART 4 PLACEHOLDER — ${agent}. Do not deploy. Always disclose AI identity; confirm identity before debt disclosure; no threats; respect opt-outs and allowed hours.`;
       await tx
@@ -128,6 +145,10 @@ export async function seedPortfolio(
         .insert(s.debtors)
         .values({
           businessId: business.id,
+          // Fictional sample data, but the gate still needs a recorded basis.
+          consentBasis: "ledger_customer",
+          consentAttestedAt: now,
+          consentSource: "seeded sample portfolio (fictional)",
           shopName: profile.shop,
           contactName: profile.contact,
           phoneE164: phone,
@@ -225,6 +246,7 @@ export async function seedPortfolio(
         callIds.push(call.id);
         await tx.insert(s.events).values({
           type: connected ? "call.completed" : "call.no_answer",
+          businessId: business.id,
           debtorId: debtor.id,
           callId: call.id,
           payload: { status, simulated: true },
@@ -234,6 +256,7 @@ export async function seedPortfolio(
         });
         if (connected)
           await tx.insert(s.complianceEvents).values({
+            businessId: business.id,
             debtorId: debtor.id,
             callId: call.id,
             kind: "ai_disclosed",
@@ -244,6 +267,7 @@ export async function seedPortfolio(
             updatedAt: at,
           });
         await tx.insert(s.messages).values({
+          businessId: business.id,
           debtorId: debtor.id,
           callId: call.id,
           toE164: phone,
@@ -257,6 +281,7 @@ export async function seedPortfolio(
         });
         await tx.insert(s.events).values({
           type: "message.sent",
+          businessId: business.id,
           debtorId: debtor.id,
           callId: call.id,
           payload: { channel: "console", simulated: true },
@@ -273,6 +298,7 @@ export async function seedPortfolio(
             Date.UTC(fifth.getUTCFullYear(), fifth.getUTCMonth() - 1, 5, 6, 30),
           );
         await tx.insert(s.promises).values({
+          businessId: business.id,
           debtorId: debtor.id,
           amountPaise: 500000n,
           promisedFor: date(fifth),
@@ -290,6 +316,7 @@ export async function seedPortfolio(
           const at = ago(profile.historyDays[i]);
           const due = new Date(at.getTime() + dayMs);
           await tx.insert(s.promises).values({
+            businessId: business.id,
             debtorId: debtor.id,
             callId: callIds[i],
             amountPaise: 300000n,
@@ -306,6 +333,7 @@ export async function seedPortfolio(
       }
       if (profile.kind === "promise")
         await tx.insert(s.promises).values({
+          businessId: business.id,
           debtorId: debtor.id,
           callId: callIds.at(-1),
           amountPaise: 500000n,
@@ -327,6 +355,7 @@ export async function seedPortfolio(
           const [link] = await tx
             .insert(s.paymentLinks)
             .values({
+              businessId: business.id,
               debtorId: debtor.id,
               callId: callIds[Math.min(idx, callIds.length - 1)],
               amountPaise: BigInt(amount) * 100n,
@@ -340,6 +369,7 @@ export async function seedPortfolio(
             })
             .returning({ id: s.paymentLinks.id });
           await tx.insert(s.payments).values({
+            businessId: business.id,
             debtorId: debtor.id,
             paymentLinkId: link.id,
             amountPaise: BigInt(amount) * 100n,
@@ -352,6 +382,7 @@ export async function seedPortfolio(
           });
           await tx.insert(s.events).values({
             type: "payment.received",
+            businessId: business.id,
             debtorId: debtor.id,
             payload: {
               amount_paise: String(amount * 100),
@@ -365,6 +396,7 @@ export async function seedPortfolio(
       }
       if (profile.kind === "optout") {
         await tx.insert(s.optOuts).values({
+          businessId: business.id,
           debtorId: debtor.id,
           scope: "all",
           reason: "Asked not to be contacted again",
@@ -374,6 +406,7 @@ export async function seedPortfolio(
           updatedAt: ago(12),
         });
         await tx.insert(s.complianceEvents).values({
+          businessId: business.id,
           debtorId: debtor.id,
           callId: callIds[0],
           kind: "opt_out",
@@ -386,6 +419,7 @@ export async function seedPortfolio(
       }
       if (profile.kind === "dispute")
         await tx.insert(s.complianceEvents).values({
+          businessId: business.id,
           debtorId: debtor.id,
           callId: callIds[0],
           kind: "dispute_hold",
@@ -396,6 +430,7 @@ export async function seedPortfolio(
           updatedAt: ago(3),
         });
       await tx.insert(s.contactDossiers).values({
+        businessId: business.id,
         debtorId: debtor.id,
         text:
           profile.kind === "demo"

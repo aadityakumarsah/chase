@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { runDailyBrief } from "@/lib/brief";
 import { deliveryChannelSchema } from "@/lib/brief/types";
-import { requireDashboardAdmin } from "@/lib/dashboard/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,8 +13,8 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const denied = requireDashboardAdmin(request, { mutation: true });
-  if (denied) return denied;
+  const auth = await requireMember(request, { mutation: true });
+  if (!auth.ok) return auth.response;
   try {
     const body = bodySchema.parse(await request.json());
     return NextResponse.json(await runDailyBrief(body), {

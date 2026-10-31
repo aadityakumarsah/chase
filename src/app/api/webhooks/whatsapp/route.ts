@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, like, or } from "drizzle-orm";
 import { getEnv } from "@/lib/env";
 import { secureEqual } from "@/lib/tools/validators";
 import { getDb } from "@/lib/db";
@@ -69,55 +69,65 @@ export async function POST(request: NextRequest) {
       } catch {
         continue;
       }
-      const [debtor] = await getDb()
+      // One phone number can be a customer of several workspaces. An inbound
+      // message arrives on the platform's WhatsApp sender, so it cannot be
+      // attributed to one tenant: record it for every workspace that holds the
+      // number, and honour STOP in all of them. Over-applying an opt-out is the
+      // only safe direction to be wrong in.
+      const matches = await getDb()
         .select()
         .from(debtors)
         .where(eq(debtors.phoneE164, phone));
-      if (!debtor) continue;
+      if (!matches.length) continue;
       const text = inbound.text?.body ?? "";
-      await getDb().transaction(async (tx) => {
-        await tx
-          .update(debtors)
-          .set({ lastInboundAt: new Date() })
-          .where(eq(debtors.id, debtor.id));
-        await tx
-          .insert(messages)
-          .values({
-            debtorId: debtor.id,
-            toE164: phone,
-            channel: "whatsapp",
-            direction: "in",
-            provider: "meta_whatsapp",
-            providerMessageId: inbound.id,
-            body: text,
-            status: "delivered",
-            kind: "inbound",
-          })
-          .onConflictDoNothing();
-        if (/^(stop|बंद करो|call mat karo)$/i.test(text.trim())) {
-          const [old] = await tx
-            .select()
-            .from(optOuts)
-            .where(
-              and(
-                eq(optOuts.debtorId, debtor.id),
-                eq(optOuts.scope, "all"),
-                isNull(optOuts.clearedAt),
-              ),
-            );
-          if (!old)
-            await tx.insert(optOuts).values({
-              debtorId: debtor.id,
-              scope: "all",
-              reason: "WhatsApp STOP",
-              source: "whatsapp_stop",
-            });
+      const isStop = /^(stop|बंद करो|call mat karo)$/i.test(text.trim());
+      for (const debtor of matches)
+        await getDb().transaction(async (tx) => {
           await tx
             .update(debtors)
-            .set({ status: "do_not_contact" })
+            .set({ lastInboundAt: new Date() })
             .where(eq(debtors.id, debtor.id));
-        }
-      });
+          await tx
+            .insert(messages)
+            .values({
+              businessId: debtor.businessId,
+              debtorId: debtor.id,
+              toE164: phone,
+              channel: "whatsapp",
+              direction: "in",
+              provider: "meta_whatsapp",
+              // Scoped per workspace so one provider id can fan out to each tenant.
+              providerMessageId: `${inbound.id}:${debtor.businessId}`,
+              body: text,
+              status: "delivered",
+              kind: "inbound",
+            })
+            .onConflictDoNothing();
+          if (isStop) {
+            const [old] = await tx
+              .select()
+              .from(optOuts)
+              .where(
+                and(
+                  eq(optOuts.debtorId, debtor.id),
+                  eq(optOuts.scope, "all"),
+                  isNull(optOuts.clearedAt),
+                ),
+              );
+            if (!old)
+              await tx.insert(optOuts).values({
+                businessId: debtor.businessId,
+                debtorId: debtor.id,
+                scope: "all",
+                reason: "WhatsApp STOP",
+                source: "whatsapp_stop",
+              });
+            await tx
+              .update(debtors)
+              .set({ status: "do_not_contact" })
+              .where(eq(debtors.id, debtor.id));
+          }
+        });
     }
     for (const status of change.value?.statuses ?? [])
       await getDb()
@@ -132,7 +142,11 @@ export async function POST(request: NextRequest) {
         .where(
           and(
             eq(messages.provider, "meta_whatsapp"),
-            eq(messages.providerMessageId, status.id),
+            // Outbound ids are stored verbatim; inbound ones carry a tenant suffix.
+            or(
+              eq(messages.providerMessageId, status.id),
+              like(messages.providerMessageId, `${status.id}:%`),
+            ),
           ),
         );
   }

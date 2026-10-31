@@ -1,27 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { processCall } from "@/lib/analysis/process";
-import { verifySession } from "@/lib/auth";
+import { requireMember } from "@/lib/tenancy/guard";
 import { getBolnaClient } from "@/lib/bolna/client";
 import { ingestExecution } from "@/lib/calls/webhook";
 import { getDb } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
-import { getEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const env = getEnv();
-  if (!verifySession(request.cookies.get("admin")?.value, env.ADMIN_PASSCODE))
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (request.headers.get("origin") !== new URL(env.APP_BASE_URL).origin)
-    return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+  const auth = await requireMember(request, { mutation: true });
+  if (!auth.ok) return auth.response;
   try {
     const id = z.uuid().parse((await params).id);
-    const [call] = await getDb().select().from(calls).where(eq(calls.id, id));
+    const [call] = await getDb()
+      .select()
+      .from(calls)
+      .where(and(eq(calls.id, id), eq(calls.businessId, auth.businessId)));
     if (!call?.bolnaExecutionId)
       return NextResponse.json(
         { error: "Execution not available" },

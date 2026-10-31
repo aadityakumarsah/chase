@@ -15,9 +15,11 @@ export default async function PayPage({
   if (!data) notFound();
   const { link, debtor, business, invoiceRefs } = data,
     amount = (Number(link.amountPaise) / 100).toFixed(2),
-    vpa = business.upiVpa;
+    // Each workspace collects into its own UPI ID; Chase never holds the money.
+    vpa = business.upiVpa,
+    payeeName = business.merchantName ?? business.name;
   const upi = vpa
-    ? `upi://pay?${new URLSearchParams({ pa: vpa, pn: business.name, am: amount, cu: "INR", tn: invoiceRefs.join(", ").slice(0, 80), tr: token }).toString()}`
+    ? `upi://pay?${new URLSearchParams({ pa: vpa, pn: payeeName, am: amount, cu: "INR", tn: invoiceRefs.join(", ").slice(0, 80), tr: token }).toString()}`
     : null;
   const qr = upi
     ? await QRCode.toString(upi, { type: "svg", margin: 1, width: 240 })

@@ -43,8 +43,16 @@ export type ContactInput = {
   hardship: boolean;
   activePromise: { date: string } | null;
   demoMode: boolean;
+  /** Demo-mode safety list. Production permission comes from `consentBasis`. */
   allowlist: readonly string[];
   demoOverride: boolean;
+  /**
+   * Why this workspace may contact this debtor, attested at import. Outside demo
+   * mode a debtor with no recorded basis is never called.
+   */
+  consentBasis?: string | null;
+  /** For owner briefs: the workspace proved control of the number by OTP. */
+  ownerPhoneVerified?: boolean;
 };
 export type ContactDecision = {
   allowed: boolean;
@@ -91,15 +99,29 @@ export function evaluateContact(input: ContactInput): ContactDecision {
   const add = (id: ContactRuleId, passed: boolean, detail: string) =>
     rules.push({ id, passed, detail });
   const allowlisted = input.allowlist.includes(input.toNumber);
-
+  const consented = Boolean(input.consentBasis);
+  // R1 is the permission rule. In demo mode it is the operator-maintained
+  // allowlist; in production it is the workspace's own recorded basis for
+  // contacting this customer, or a verified owner number for a brief call.
+  const permitted = input.demoMode
+    ? allowlisted
+    : input.purpose === "owner_brief"
+      ? input.ownerPhoneVerified === true
+      : consented;
   add(
     "R1_allowlist",
-    !input.demoMode || allowlisted,
+    permitted,
     input.demoMode
       ? allowlisted
         ? "number is allowlisted"
         : "number is not allowlisted"
-      : "demo mode is off",
+      : input.purpose === "owner_brief"
+        ? input.ownerPhoneVerified === true
+          ? "owner number verified"
+          : "owner number is not verified"
+        : consented
+          ? `contact permitted: ${input.consentBasis}`
+          : "no recorded basis to contact this customer",
   );
   if (input.purpose === "owner_brief") {
     for (const id of CONTACT_RULE_IDS.slice(1))

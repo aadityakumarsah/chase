@@ -1733,3 +1733,155 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- Accounts: Google button, divider and inline messages ---- */
+.googleButton {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid #43372c;
+  background: #1d1813;
+  color: #f3dfcd;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+.googleButton:hover:not(:disabled) {
+  background: #241d17;
+  border-color: #5a4a3b;
+}
+.googleButton:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.authDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 6px;
+  color: #8d8075;
+  font-size: 11px;
+}
+.authDivider::before,
+.authDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #342a21;
+}
+.authError {
+  margin-top: 12px;
+  color: #f4afa0 !important;
+}
+.authNotice {
+  margin-top: 12px;
+  color: #bcd6b9 !important;
+}
+.authHint {
+  margin-top: 8px;
+  font-size: 11px !important;
+}
+.authSwitch {
+  margin-top: 4px;
+  text-align: center;
+}
+.authSwitch a {
+  color: #f0c9a8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.spin {
+  animation: chase-spin 900ms linear infinite;
+}
+@keyframes chase-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Onboarding ---- */
+.onboard {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+.onboardCard {
+  width: 100%;
+  max-width: 560px;
+}
+.onboardCard h1 {
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  margin: 16px 0 8px;
+}
+.onboardCard > p {
+  color: #9c8e80;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.onboardCard form {
+  margin-top: 28px;
+  display: grid;
+  gap: 16px;
+}
+.onboardRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.onboardCard label {
+  display: block;
+  font-size: 12px;
+  color: #c2b4a6;
+  margin-bottom: 8px;
+}
+.onboardCard input,
+.onboardCard select {
+  width: 100%;
+  border: 1px solid #43372c;
+  border-radius: 9px;
+  padding: 12px;
+  background: #17130f;
+  color: #f3dfcd;
+  font: inherit;
+}
+.onboardCard small {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #8d8075;
+  line-height: 1.6;
+}
+.consentBox {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px solid #43372c;
+  border-radius: 12px;
+  padding: 16px;
+  background: #17130f;
+}
+.consentBox input {
+  width: auto;
+  margin-top: 3px;
+  accent-color: #e5b58a;
+}
+.consentBox span {
+  font-size: 12px;
+  color: #b3a08e;
+  line-height: 1.7;
+}
+@media (max-width: 620px) {
+  .onboardRow {
+    grid-template-columns: 1fr;
+  }
+}

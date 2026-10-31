@@ -59,6 +59,11 @@ describe("environment", () => {
     expect(report.llm.missing).toEqual(["LLM_BASE_URL"]);
     expect(JSON.stringify(report)).not.toContain("unit-secret-value");
     expect(JSON.stringify(report)).not.toContain("unit-llm-value");
-    expect(report.security.missing).toContain("DEMO_VIEW_PASSCODE");
+    expect(report.security.missing).toContain("CHASE_TOOL_SECRET");
+    // Accounts replaced the shared passcode: Supabase credentials are what the
+    // report must now flag as missing authentication.
+    expect(report.auth.status).toBe("missing");
+    expect(report.auth.missing).toContain("NEXT_PUBLIC_SUPABASE_URL");
+    expect(report.auth.missing).toContain("SUPABASE_SECRET_KEY");
   });
 });

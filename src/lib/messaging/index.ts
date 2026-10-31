@@ -22,6 +22,7 @@ export async function enqueueMessage(
   const [row] = await db
     .insert(messages)
     .values({
+      businessId: m.businessId,
       toE164: m.to,
       body: m.text,
       debtorId: m.debtorId,
@@ -101,6 +102,7 @@ export async function deliverMessage(id: string) {
     try {
       providerMessageId = await sendExternal(
         {
+          businessId: m.businessId,
           to: m.toE164,
           text: m.body,
           debtorId: m.debtorId ?? undefined,
