@@ -30,6 +30,8 @@ export type LLMResult<T> = {
 };
 export type TextRequest = {
   task: Task;
+  /** Workspace that owns this inference; omitted for platform-wide evaluations. */
+  businessId?: string;
   system: SystemPart[];
   messages: Message[];
   maxTokens: number;

@@ -541,6 +541,7 @@ async function prepareDemoState(businessId: string, now: Date) {
   await getDb()
     .insert(s.promptPrs)
     .values({
+      businessId,
       agentKey: "collections",
       baseVersionId: active.id,
       title: draft.title,

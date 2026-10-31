@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { desc } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { runTool } from "@/lib/calls/tools";
 import { requireMember } from "@/lib/tenancy/guard";
 import { getDb } from "@/lib/db";
@@ -11,9 +11,15 @@ export async function POST(request: NextRequest) {
   const [call] = await getDb()
     .select()
     .from(calls)
+    .where(
+      and(
+        eq(calls.businessId, auth.businessId),
+        eq(calls.purpose, "collection"),
+      ),
+    )
     .orderBy(desc(calls.createdAt))
     .limit(1);
-  if (!call || Date.now() - call.createdAt.getTime() > 45 * 60_000)
+  if (!call?.debtorId || Date.now() - call.createdAt.getTime() > 45 * 60_000)
     return NextResponse.json(
       { error: "Start a demo call first" },
       { status: 409 },

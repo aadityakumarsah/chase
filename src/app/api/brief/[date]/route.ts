@@ -13,9 +13,12 @@ export async function GET(
   if (!auth.ok) return auth.response;
   try {
     const { date } = await context.params;
-    return NextResponse.json(await getBriefPage(z.iso.date().parse(date)), {
-      headers: { "Cache-Control": "no-store" },
-    });
+    return NextResponse.json(
+      await getBriefPage(auth.businessId, z.iso.date().parse(date)),
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch {
     return NextResponse.json({ error: "Invalid brief date" }, { status: 400 });
   }

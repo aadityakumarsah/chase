@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { promptPrs } from "@/lib/db/schema";
 import { emitEvent } from "@/lib/events";
@@ -20,12 +20,14 @@ Preserve prompt variables, AI honesty, identity-before-dues, privacy, respectful
 Prefer empathy, clarity and a natural Indian SMB phone-call style over added pressure.`;
 
 async function propose(
+  businessId: string,
   base: string,
   evidence: Awaited<ReturnType<typeof promptCallEvidence>>,
   retryReasons: string[] = [],
 ) {
   return getLLM().generateObject({
     task: "prompt_pr",
+    businessId,
     schema: PromptPRSchema,
     schemaName: "prompt_pr",
     maxTokens: 1_800,
@@ -56,22 +58,28 @@ async function propose(
 }
 
 export async function generatePromptPR(
-  agentKey: "collections" = "collections",
+  agentKey: "collections",
+  businessId: string,
 ) {
   if (agentKey !== "collections")
     throw new Error("Only collections Prompt PRs are supported");
   const active = await activePrompt(agentKey);
-  const evidence = await promptCallEvidence();
+  const evidence = await promptCallEvidence(businessId);
   if (evidence.lowest.length < 2)
     throw new Error(
       "At least two connected analyzed calls are required for a Prompt PR",
     );
 
-  let generated = await propose(active.body, evidence);
+  let generated = await propose(businessId, active.body, evidence);
   let draft: PromptPRDraft = generated.value;
   let validated = validatePromptPR(active.body, draft, evidence.recent);
   if (!validated.ok) {
-    generated = await propose(active.body, evidence, validated.errors);
+    generated = await propose(
+      businessId,
+      active.body,
+      evidence,
+      validated.errors,
+    );
     draft = generated.value;
     validated = validatePromptPR(active.body, draft, evidence.recent);
   }
@@ -99,6 +107,7 @@ export async function generatePromptPR(
   const [saved] = await getDb()
     .insert(promptPrs)
     .values({
+      businessId,
       agentKey,
       baseVersionId: active.id,
       title: draft.title,
@@ -113,16 +122,17 @@ export async function generatePromptPR(
     })
     .returning();
   await emitEvent("prompt_pr.created", {
+    businessId,
     payload: { id: saved.id, agentKey, recommended, baseVersionId: active.id },
   });
   return saved;
 }
 
-export async function getPromptPRCandidate(id: string) {
+export async function getPromptPRCandidate(id: string, businessId: string) {
   const [row] = await getDb()
     .select()
     .from(promptPrs)
-    .where(eq(promptPrs.id, id));
+    .where(and(eq(promptPrs.id, id), eq(promptPrs.businessId, businessId)));
   if (!row) throw new Error("Prompt PR not found");
   const [base] = await getDb().query.promptVersions.findMany({
     where: (table, { eq: equal }) => equal(table.id, row.baseVersionId),

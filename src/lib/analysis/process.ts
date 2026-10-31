@@ -127,6 +127,7 @@ export async function processCall(
             result: tool.result,
           })),
         },
+        row.call.businessId,
       );
       analysis = CallAnalysisSchema.parse(result.value);
       model = result.model;
@@ -284,6 +285,7 @@ export async function processCall(
       try {
         const result = await provider.generateText({
           task: "rating_rationale",
+          businessId: row.call.businessId,
           maxTokens: 80,
           system: [
             {

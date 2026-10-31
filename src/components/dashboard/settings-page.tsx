@@ -21,7 +21,10 @@ import { RelativeTime } from "@/components/relative-time";
 import { apiFetch, sentence } from "@/lib/dashboard/client";
 import type { settingsDashboard } from "@/lib/dashboard/queries";
 
-type Data = Awaited<ReturnType<typeof settingsDashboard>>;
+type Data = Awaited<ReturnType<typeof settingsDashboard>> & {
+  syncAvailable: boolean;
+  canManage: boolean;
+};
 
 export function SettingsPage() {
   const { data, mutate } = useSWR<Data>("/api/settings", apiFetch, {
@@ -73,10 +76,15 @@ export function SettingsPage() {
             >
               <Activity size={15} /> Health check
             </Button>
-            <Button onClick={() => void syncAgents()} disabled={syncing}>
-              <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />{" "}
-              Sync agents
-            </Button>
+            {data.canManage && data.syncAvailable && (
+              <Button onClick={() => void syncAgents()} disabled={syncing}>
+                <RefreshCw
+                  size={15}
+                  className={syncing ? "animate-spin" : ""}
+                />{" "}
+                Sync agents
+              </Button>
+            )}
           </div>
         }
       />

@@ -21,6 +21,7 @@ import {
 } from "./types";
 export type Audit = {
   task: Task;
+  businessId?: string;
   provider: string;
   model: string;
   features: string[];
@@ -34,6 +35,7 @@ export async function writeAudit(a: Audit) {
     await getDb()
       .insert(llmCalls)
       .values({
+        businessId: a.businessId,
         estimatedCostUsd: estimateCost(
           a.provider,
           a.model,
@@ -146,6 +148,7 @@ export function getLLM(
       ];
       await audit({
         ...identity(input.task, fallback),
+        businessId: input.businessId,
         model: result?.model ?? identity(input.task, fallback).model,
         features: flags,
         usage: result?.usage ?? error?.usage ?? zeroUsage(),
@@ -193,6 +196,7 @@ export function getLLM(
           if (!completed && !error) error = new LLMError("aborted");
           await audit({
             ...identity(i.task, fallback),
+            businessId: i.businessId,
             features: [
               ...(result?.features ?? ["streaming"]),
               ...(fallback ? ["fallback"] : []),

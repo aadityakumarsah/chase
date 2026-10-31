@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { processCall } from "@/lib/analysis/process";
 import { requireMember } from "@/lib/tenancy/guard";
@@ -14,10 +14,13 @@ export async function POST(
   const id = z.uuid().safeParse((await params).id);
   if (!id.success)
     return NextResponse.json({ error: "Invalid call" }, { status: 400 });
-  await getDb()
+  const [call] = await getDb()
     .update(calls)
     .set({ processedAt: null, processingStartedAt: null })
-    .where(eq(calls.id, id.data));
+    .where(and(eq(calls.id, id.data), eq(calls.businessId, auth.businessId)))
+    .returning({ id: calls.id });
+  if (!call)
+    return NextResponse.json({ error: "Call not found" }, { status: 404 });
   try {
     return NextResponse.json(await processCall(id.data, { force: true }));
   } catch {

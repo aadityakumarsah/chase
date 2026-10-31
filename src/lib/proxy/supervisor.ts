@@ -102,11 +102,13 @@ async function logFlag(
 
 export async function supervisorWithinBudget(input: {
   callId: string;
+  businessId: string;
   debtorId: string | null;
   utterance: string;
 }) {
   const work = getLLM().generateObject({
     task: "supervisor",
+    businessId: input.businessId,
     schema: SupervisorSchema,
     schemaName: "supervisor_flags",
     maxTokens: 300,

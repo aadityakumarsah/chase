@@ -6,11 +6,13 @@ export async function analyzeCall(
   today: string,
   provider: LLMProvider = getLLM(),
   context: Record<string, unknown> = {},
+  businessId?: string,
 ) {
   z.string().min(1).max(100000).parse(transcript);
   z.iso.date().parse(today);
   return provider.generateObject({
     task: "call_analysis",
+    businessId,
     schema: CallAnalysisSchema,
     schemaName: "call_analysis",
     maxTokens: 2200,

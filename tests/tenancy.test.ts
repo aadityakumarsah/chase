@@ -4,6 +4,7 @@ import { createWorkspaceSchema, upiVpaSchema } from "@/lib/tenancy/onboarding";
 import { workspaceSettingsSchema } from "@/lib/tenancy/settings";
 import { inviteSchema } from "@/lib/tenancy/team";
 import { evaluateContact, type ContactInput } from "@/lib/compliance/gate";
+import { canSyncSharedPrompt } from "@/lib/promptprs/policy";
 
 describe("workspace roles", () => {
   it("orders authority owner > admin > operator > viewer", () => {
@@ -14,6 +15,17 @@ describe("workspace roles", () => {
     expect(hasAtLeast("admin", "owner")).toBe(false);
     expect(hasAtLeast("owner", "owner")).toBe(true);
     expect(hasAtLeast("viewer", "operator")).toBe(false);
+  });
+});
+
+describe("shared prompt sync", () => {
+  const a = "11111111-1111-4111-8111-111111111111";
+  const b = "22222222-2222-4222-8222-222222222222";
+  it("allows only the matching sole demo workspace", () => {
+    expect(canSyncSharedPrompt(true, [a], a)).toBe(true);
+    expect(canSyncSharedPrompt(true, [a, b], a)).toBe(false);
+    expect(canSyncSharedPrompt(true, [a], b)).toBe(false);
+    expect(canSyncSharedPrompt(false, [a], a)).toBe(false);
   });
 });
 

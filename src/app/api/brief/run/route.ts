@@ -17,9 +17,12 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return auth.response;
   try {
     const body = bodySchema.parse(await request.json());
-    return NextResponse.json(await runDailyBrief(body), {
-      headers: { "Cache-Control": "no-store" },
-    });
+    return NextResponse.json(
+      await runDailyBrief({ ...body, businessId: auth.businessId }),
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch (error) {
     return NextResponse.json(
       {

@@ -93,12 +93,11 @@ business. Chase is never a payment intermediary and holds no settlement balance.
 - **Invitation email.** Invitations are created and returned as a single-use
   link for an admin to pass on. No mail is sent, and the UI says so rather than
   implying delivery.
-- **Per-tenant LLM telemetry.** `llm_calls.business_id` exists and is scoped on
-  read, but the LLM layer does not yet stamp it, so a new workspace's AI Ops page
-  is empty until that is plumbed through.
 - **Shared Bolna agents.** Both agents belong to the platform account and receive
-  per-call tenant variables. Per-tenant agents and prompt overrides are a later
-  milestone.
+  per-call tenant variables. Prompt PR evidence, list and detail are scoped to
+  the current workspace. Approve/rollback is available only in a single-workspace
+  demo, because those actions sync a shared agent. Per-tenant agents and prompt
+  overrides are a later milestone.
 - **Rate limiting** remains process-local and should move to a shared store
   before running more than one instance.
 
@@ -110,6 +109,11 @@ invitations, settings policy and sign-out against the Supabase project.
 contact gate offline. `pnpm verify:e2e` uses an explicit `E2E_BUSINESS_ID` for
 tenant data checks and otherwise skips those checks. It never chooses a random
 workspace.
+
+LLM usage records now carry the workspace id for call analysis, dossier,
+rating rationale, daily brief, live supervisor and proxy turns. Platform-wide
+persona evaluations remain unattributed. The nightly Prompt PR job iterates
+workspaces and reads only each workspace's call evidence.
 
 ## Production configuration
 

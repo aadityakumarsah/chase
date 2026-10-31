@@ -66,6 +66,7 @@ export async function generateBriefNarrative(
   const request = (content: string) =>
     provider.generateObject({
       task: "brief",
+      businessId: metrics.businessId,
       schema: BriefNarrativeDraftSchema,
       schemaName: "daily_management_brief",
       maxTokens: 3000,

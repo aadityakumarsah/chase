@@ -24,21 +24,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const promises = await sweepPromises(new Date(), { includeToday: true });
-    const promptPr = await runNightlyPromptPrJob();
     // Multi-tenant: every active workspace gets its own brief. One workspace
     // failing must not stop the others from being briefed.
     const workspaces = await listActiveWorkspaceIds();
     const results: Array<{
       businessId: string;
       ok: boolean;
+      promptPr?: unknown;
       result?: unknown;
       error?: string;
     }> = [];
     for (const businessId of workspaces)
       try {
+        // Prompt proposals only see this workspace's calls. Lack of usable
+        // evidence does not stop the owner brief for the same workspace.
+        const promptPr = await runNightlyPromptPrJob(businessId).catch(() => ({
+          status: "skipped" as const,
+        }));
         results.push({
           businessId,
           ok: true,
+          promptPr,
           result: await runDailyBrief({
             businessId,
             deliver: ["dashboard", "message", "call"],
@@ -55,7 +61,6 @@ export async function GET(request: NextRequest) {
       ok: results.every((entry) => entry.ok),
       workspaces: results.length,
       promises,
-      promptPr,
       results,
     });
   } catch (error) {

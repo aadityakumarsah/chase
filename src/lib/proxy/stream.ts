@@ -76,6 +76,7 @@ export async function createProxyStream(
     latestUser && !pending.disabled
       ? await supervisorWithinBudget({
           callId: linked.call.id,
+          businessId: linked.call.businessId,
           debtorId: linked.call.debtorId,
           utterance: latestUser.content,
         })
@@ -201,6 +202,7 @@ export async function createProxyStream(
         await recordProxyLatency(linked.call.id, linked.call.debtorId, ttftMs);
         await writeAudit({
           task: "chat_proxy",
+          businessId: linked.call.businessId,
           provider: "anthropic",
           model,
           features: [
@@ -226,6 +228,7 @@ export async function createProxyStream(
       } catch {
         await writeAudit({
           task: "chat_proxy",
+          businessId: linked.call.businessId,
           provider: "anthropic",
           model,
           features: ["streaming"],

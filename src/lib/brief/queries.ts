@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { briefs } from "@/lib/db/schema";
@@ -21,12 +21,17 @@ const serialize = (row: typeof briefs.$inferSelect) => ({
   updatedAt: row.updatedAt.toISOString(),
 });
 
-export async function getBriefPage(date?: string) {
+export async function getBriefPage(businessId: string, date?: string) {
+  z.uuid().parse(businessId);
   if (date) z.iso.date().parse(date);
   const rows = await getDb()
     .select()
     .from(briefs)
-    .where(date ? eq(briefs.forDate, date) : undefined)
+    .where(
+      date
+        ? and(eq(briefs.businessId, businessId), eq(briefs.forDate, date))
+        : eq(briefs.businessId, businessId),
+    )
     .orderBy(desc(briefs.forDate), desc(briefs.createdAt))
     .limit(date ? 1 : 30);
   const latest = rows[0] ? serialize(rows[0]) : null;
@@ -34,6 +39,7 @@ export async function getBriefPage(date?: string) {
     ? await getDb()
         .select()
         .from(briefs)
+        .where(eq(briefs.businessId, businessId))
         .orderBy(desc(briefs.forDate))
         .limit(30)
     : rows;

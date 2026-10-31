@@ -21,7 +21,7 @@ Indian distributors and wholesalers sell on credit, but the follow-up work still
 - Gives Bolna seven authenticated tools for payment links, promises, status checks, callbacks, disputes, opt-outs and owner transfer.
 - Turns calls into typed outcomes, an updated Contact Dossier, a fresh rating and a reordered queue.
 - Calls the owner with a numbers-guarded Daily Management Brief and account-level follow-up facts.
-- Proposes evidence-backed Prompt PRs, then red-teams base and candidate prompts before a human can approve them.
+- Proposes evidence-backed Prompt PRs, then red-teams base and candidate prompts. Shared-agent approval is currently limited to an isolated single-workspace demo.
 
 ## Architecture
 

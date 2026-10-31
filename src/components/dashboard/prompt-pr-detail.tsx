@@ -16,6 +16,8 @@ type Result = {
   judge: { tone: number };
 };
 type Detail = {
+  syncAvailable: boolean;
+  canManage: boolean;
   row: {
     id: string;
     title: string;
@@ -90,15 +92,17 @@ export function PromptPrDetailPage({ id }: { id: string }) {
           <p className="mt-2 max-w-3xl text-muted-foreground">{row.problem}</p>
         </div>
         <div className="flex gap-2">
-          {row.status === "open" && (
+          {row.status === "open" && data.canManage && (
             <>
-              <Button
-                disabled={busy || !row.simResults.recommended}
-                onClick={() => act("approve")}
-              >
-                <Check className="mr-2 size-4" />
-                Approve & sync
-              </Button>
+              {data.syncAvailable && (
+                <Button
+                  disabled={busy || !row.simResults.recommended}
+                  onClick={() => act("approve")}
+                >
+                  <Check className="mr-2 size-4" />
+                  Approve & sync
+                </Button>
+              )}
               <Button
                 disabled={busy}
                 variant="outline"
@@ -109,18 +113,26 @@ export function PromptPrDetailPage({ id }: { id: string }) {
               </Button>
             </>
           )}
-          {row.status === "approved" && (
-            <Button
-              disabled={busy}
-              variant="outline"
-              onClick={() => act("rollback")}
-            >
-              <RotateCcw className="mr-2 size-4" />
-              Roll back
-            </Button>
-          )}
+          {row.status === "approved" &&
+            data.canManage &&
+            data.syncAvailable && (
+              <Button
+                disabled={busy}
+                variant="outline"
+                onClick={() => act("rollback")}
+              >
+                <RotateCcw className="mr-2 size-4" />
+                Roll back
+              </Button>
+            )}
         </div>
       </div>
+      {!data.syncAvailable && (
+        <p className="text-sm text-muted-foreground">
+          Prompt sync is paused while Chase shares one Bolna agent across
+          workspaces. You can review or reject this proposal.
+        </p>
+      )}
       {error && (
         <p className="rounded-md border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-500">
           {error}

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { debtorBusinessId } from "@/lib/db/tenant";
-import { contactDossiers } from "@/lib/db/schema";
+import { contactDossiers, debtors } from "@/lib/db/schema";
 import { getLLM, type LLMProvider } from "@/lib/llm";
 import { DossierSchema } from "./schema";
 import { buildDossierInput } from "./input";
@@ -22,8 +22,14 @@ export async function compileDossier(debtorId: string, provider?: LLMProvider) {
     .from(contactDossiers)
     .where(eq(contactDossiers.debtorId, debtorId));
   if (existing?.sourceHash === hash) return existing;
+  const [debtor] = await db
+    .select({ businessId: debtors.businessId })
+    .from(debtors)
+    .where(eq(debtors.id, debtorId));
+  if (!debtor) throw new Error("Debtor not found");
   const response = await (provider ?? getLLM()).generateObject({
     task: "dossier",
+    businessId: debtor.businessId,
     system: [{ text: DOSSIER_PROMPT, cache: true }],
     messages: [{ role: "user", content: JSON.stringify(input) }],
     schema: DossierSchema,

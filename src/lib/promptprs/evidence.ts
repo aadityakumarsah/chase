@@ -21,7 +21,7 @@ const seededAnalysisSchema = z.object({
   simulated: z.boolean().optional(),
 });
 
-export async function promptCallEvidence() {
+export async function promptCallEvidence(businessId: string) {
   const rows = await getDb()
     .select({
       id: calls.id,
@@ -31,6 +31,7 @@ export async function promptCallEvidence() {
     .from(calls)
     .where(
       and(
+        eq(calls.businessId, businessId),
         eq(calls.purpose, "collection"),
         eq(calls.connected, true),
         isNotNull(calls.transcript),

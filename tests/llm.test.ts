@@ -273,6 +273,7 @@ describe("routing and audited fallback", () => {
   });
   it("logs failed primary and successful fallback separately", async () => {
     const logs: Audit[] = [];
+    const businessId = "11111111-1111-4111-8111-111111111111";
     const p = getLLM(env, {
       factory: (_, fallback) =>
         fake(fallback ? undefined : new LLMError("provider", 500)),
@@ -280,8 +281,11 @@ describe("routing and audited fallback", () => {
         logs.push(a);
       },
     });
-    expect((await p.generateText(request)).features).toContain("fallback");
+    expect(
+      (await p.generateText({ ...request, businessId })).features,
+    ).toContain("fallback");
     expect(logs.map((l) => l.ok)).toEqual([false, true]);
+    expect(logs.map((l) => l.businessId)).toEqual([businessId, businessId]);
     expect(logs[1].provider).toBe("openai");
   });
   it.each([
@@ -313,18 +317,20 @@ describe("routing and audited fallback", () => {
       },
     }));
     const logs: Audit[] = [];
+    const businessId = "22222222-2222-4222-8222-222222222222";
     const consume = async () => {
       for await (const e of getLLM(env, {
         factory,
         audit: async (a) => {
           logs.push(a);
         },
-      }).streamChat(request))
+      }).streamChat({ ...request, businessId }))
         void e;
     };
     await expect(consume()).rejects.toMatchObject({ kind: "provider" });
     expect(factory).toHaveBeenCalledTimes(1);
     expect(logs[0].ok).toBe(false);
+    expect(logs[0].businessId).toBe(businessId);
   });
   it("records consumer cancellation once", async () => {
     const logs: Audit[] = [];
