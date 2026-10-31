@@ -7,6 +7,7 @@ import { normalisePhone } from "@/lib/phone";
 import { emitEvent } from "@/lib/events";
 import { recomputeRating } from "@/lib/chase/recompute";
 import { outstandingPaise } from "@/lib/chase/portfolio";
+import { BillingLimitError, checkLimit } from "@/lib/billing/entitlements";
 export const CSV_MAX_BYTES = 2 * 1024 * 1024;
 export const CSV_MAX_ROWS = 1000;
 export const CSV_HEADERS = [
@@ -176,6 +177,24 @@ export async function importCsv(
     .from(businesses)
     .where(eq(businesses.id, businessId));
   if (!business) throw new CsvImportError("Business not found");
+  const currentPhones = new Set(
+    (
+      await db
+        .select({ phone: debtors.phoneE164 })
+        .from(debtors)
+        .where(eq(debtors.businessId, businessId))
+    ).map((row) => row.phone),
+  );
+  const newPhones = new Set<string>();
+  for (const row of rows) {
+    const parsed = csvRowSchema.safeParse(row.value);
+    if (parsed.success && !currentPhones.has(parsed.data.phone))
+      newPhones.add(parsed.data.phone);
+  }
+  if (newPhones.size) {
+    const allowance = await checkLimit(businessId, "debtors", newPhones.size);
+    if (!allowance.ok) throw new BillingLimitError(allowance);
+  }
   const result: ImportResult = { imported: 0, updated: 0, rejected: [] };
   const touched = new Set<string>();
   for (const row of rows) {

@@ -85,6 +85,13 @@
       "when": 1793450691085,
       "tag": "0011_tenant_isolation_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793480592694,
+      "tag": "0012_whole_arclight",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireMember } from "@/lib/tenancy/guard";
 import { runCampaign } from "@/lib/calls/campaign";
+import { BillingLimitError, denialBody } from "@/lib/billing/entitlements";
 
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
@@ -14,6 +15,8 @@ export async function POST(request: NextRequest) {
       await runCampaign({ ...body, businessId: auth.businessId }),
     );
   } catch (error) {
+    if (error instanceof BillingLimitError)
+      return NextResponse.json(denialBody(error.denial), { status: 402 });
     return NextResponse.json(
       {
         error:

@@ -20,6 +20,7 @@ export default function robots(): MetadataRoute.Robots {
         "/invite/",
         "/pay/",
         "/stage",
+        "/settings/billing",
       ],
     },
     sitemap: `${origin}/sitemap.xml`,

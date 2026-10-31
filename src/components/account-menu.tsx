@@ -77,7 +77,7 @@ export function AccountMenu({
             {workspace.name}
           </span>
           <span className="block text-[11px] font-normal text-muted-foreground capitalize">
-            {workspace.role} · {workspace.plan} plan
+            {workspace.role}
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -85,6 +85,9 @@ export function AccountMenu({
           <Link href="/settings">
             <Settings size={14} /> Workspace settings
           </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/billing">Plan and billing</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings/team">

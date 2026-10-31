@@ -67,6 +67,9 @@ export function verifySession(
 export function isPublicPath(path: string): boolean {
   const roots = [
     "/login",
+    "/pricing",
+    "/contact-sales",
+    "/api/enterprise",
     "/signup",
     // Supabase OAuth/magic-link return, password reset and invitation landing.
     "/auth",

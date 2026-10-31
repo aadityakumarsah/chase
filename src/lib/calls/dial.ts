@@ -71,6 +71,14 @@ export async function startCollectionCall(
   if (!preliminary.decision.allowed)
     return { status: "blocked" as const, decision: preliminary.decision };
 
+  const { BillingLimitError, checkLimit } =
+    await import("@/lib/billing/entitlements");
+  const callAllowance = await checkLimit(
+    preliminary.debtor.businessId,
+    "callsPerMonth",
+  );
+  if (!callAllowance.ok) throw new BillingLimitError(callAllowance);
+
   const open = await getDb()
     .select({ id: invoices.id })
     .from(invoices)

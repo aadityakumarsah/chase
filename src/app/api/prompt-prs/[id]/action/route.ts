@@ -6,6 +6,7 @@ import {
   rollbackPromptPR,
 } from "@/lib/promptprs";
 import { requireMember } from "@/lib/tenancy/guard";
+import { checkFeature, denialBody } from "@/lib/billing/entitlements";
 
 const bodySchema = z.object({
   action: z.enum(["approve", "reject", "rollback"]),
@@ -20,6 +21,9 @@ export async function POST(
     minRole: "admin",
   });
   if (!auth.ok) return auth.response;
+  const allowance = await checkFeature(auth.businessId, "promptPrs");
+  if (!allowance.ok)
+    return NextResponse.json(denialBody(allowance), { status: 402 });
   try {
     const id = z.uuid().parse((await params).id);
     const { action } = bodySchema.parse(await request.json());

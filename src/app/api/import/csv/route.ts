@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireMember } from "@/lib/tenancy/guard";
 import { CSV_MAX_BYTES, CsvImportError, importCsv } from "@/lib/import/csv";
 import { z } from "zod";
+import { BillingLimitError, denialBody } from "@/lib/billing/entitlements";
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   // Importing a customer ledger is an operator action inside one workspace.
@@ -45,6 +46,8 @@ export async function POST(request: NextRequest) {
       }),
     );
   } catch (error) {
+    if (error instanceof BillingLimitError)
+      return NextResponse.json(denialBody(error.denial), { status: 402 });
     return NextResponse.json(
       {
         error:

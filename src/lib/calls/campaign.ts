@@ -29,6 +29,12 @@ function concurrencyLimit(value: unknown) {
 
 export async function runCampaign(input: z.input<typeof campaignInputSchema>) {
   const parsed = campaignInputSchema.parse(input);
+  if (!parsed.dryRun) {
+    const { BillingLimitError, checkFeature } =
+      await import("@/lib/billing/entitlements");
+    const allowance = await checkFeature(parsed.businessId, "campaigns");
+    if (!allowance.ok) throw new BillingLimitError(allowance);
+  }
   const now = new Date();
   const ratingRows = (await latestRatings(parsed.businessId))
     .filter(({ rating }) =>

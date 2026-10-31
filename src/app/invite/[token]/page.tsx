@@ -14,6 +14,8 @@ const MESSAGES: Record<string, string> = {
   expired: "This invitation has expired. Ask for a new one.",
   wrong_account:
     "This invitation was sent to a different email address. Sign in with that address to accept it.",
+  plan_limit:
+    "This workspace has reached its team member limit. Ask the owner to upgrade its plan.",
 };
 
 export default async function AcceptInvite({

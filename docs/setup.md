@@ -33,3 +33,7 @@ and webhooks; `pnpm tunnel` prints local tunnel instructions.
 `pnpm verify:e2e` performs dry checks without calling anyone. Set
 `E2E_BUSINESS_ID` to opt in to a specific workspace's dry campaign and brief
 preview; the verifier otherwise skips those tenant data checks.
+
+## Workspace subscription billing
+
+Free, Pro monthly/yearly and Enterprise pricing live at `/pricing`. The workspace owner manages Dodo checkout and the customer portal at `/settings/billing`. Dodo is not configured until its live API key, webhook secret and two recurring product IDs are set in Vercel; a return from checkout does not grant access. See [exact Dodo setup and acceptance steps](billing-dodo.md) before enabling live charges.

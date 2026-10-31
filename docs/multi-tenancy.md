@@ -88,8 +88,7 @@ business. Chase is never a payment intermediary and holds no settlement balance.
 
 ## What is deliberately not done yet
 
-- **Billing.** `plan`, `status` and `trial_ends_at` exist on every workspace and
-  a 14-day trial is set at creation, but nothing enforces or charges for them.
+- **Billing live acceptance.** Free/Pro entitlements, Dodo checkout, signed webhook handling and owner portal are implemented. No Dodo credentials/products are configured, so no checkout or charge has been verified. Enterprise remains sales-assisted; see [billing setup](billing-dodo.md).
 - **Invitation email.** Invitations are created and returned as a single-use
   link for an admin to pass on. No mail is sent, and the UI says so rather than
   implying delivery.

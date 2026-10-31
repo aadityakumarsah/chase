@@ -11,7 +11,8 @@ Chase is a multi-workspace voice collections product. The public homepage is a *
 5. Check Settings for calling window, attempt caps, payment and delivery providers. Operators can inspect a debtor's dossier and rating, run a **dry run**, then deliberately start eligible calls or a campaign. Chase blocks opted-out, disputed, too-frequently-contacted, out-of-hours or otherwise ineligible contacts, and logs the decision.
 6. During a connected Bolna call, the agent discloses it is AI and confirms identity before mentioning a debt. Its authenticated tools can send a payment link, record a promise/callback, check payment, or register a dispute or opt-out. Console messaging and hosted payment simulation are clearly marked **simulated**; a UPI intent is not proof of settlement.
 7. On the dashboard, inspect completed calls, transcripts, recordings (if supplied by Bolna), events and updated ratings. At 19:15 IST the consenting, verified owner can receive a separate management brief. Review Prompt PR evidence; shared-agent activation is restricted to an isolated single-workspace demo.
-8. Invite teammates from **Settings → Team**. Chase creates an email-bound, single-use invite URL; **no invitation email is sent**. Share that link yourself with the intended email account. Workspace roles govern access.
+8. Compare Free, Pro monthly/yearly and Enterprise at `/pricing`. The workspace owner uses `/settings/billing` for Dodo-hosted checkout, invoices and cancellation. Access changes only after Dodo's signed subscription webhook; returning from checkout alone does not activate Pro. Enterprise enquiries go to `/contact-sales` and are reviewed manually. See [Dodo setup](billing-dodo.md).
+9. Invite teammates from **Settings → Team**. Chase creates an email-bound, single-use invite URL; **no invitation email is sent**. Share that link yourself with the intended email account. Workspace roles govern access.
 
 ## Operator checklist for a real-money pilot
 
@@ -19,7 +20,7 @@ Chase is a multi-workspace voice collections product. The public homepage is a *
 - Supply a real delivery provider (Meta WhatsApp or Twilio) for OTP and payment messages, and use a real UPI VPA or configured Razorpay. Confirm money from the bank/payment webhook, not from a page view or spoken claim.
 - Keep `DEMO_MODE=true` and `CALL_ALLOWLIST` restricted to consenting test numbers for rehearsal. The empty allowlist deliberately denies all calls, including the owner brief. Only switch off demo mode after confirming the consent basis, real-phone delivery and call safeguards.
 - Enable production SMTP and confirm the Supabase Auth Site URL/redirect allowlist for sign-up and password recovery. Rotate any credentials previously shared in plaintext before public production cutover.
-- Billing, automatic invitation email, a shared rate-limit store, per-tenant Bolna agents and a durable multi-tenant brief queue remain launch gaps. Do not market the app as fully self-service production infrastructure until those are addressed.
+- Live Dodo checkout acceptance, automatic invitation email, a shared rate-limit store, per-tenant Bolna agents and a durable multi-tenant brief queue remain launch gaps. Do not market the app as fully self-service production infrastructure until those are addressed.
 
 ## Hosting
 

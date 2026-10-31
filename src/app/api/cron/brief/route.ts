@@ -6,6 +6,7 @@ import { getEnv } from "@/lib/env";
 import { runNightlyPromptPrJob } from "@/lib/promptprs/nightly";
 import { listActiveWorkspaceIds } from "@/lib/tenancy";
 import { publicRateLimit } from "@/lib/public-rate-limit";
+import { checkFeature } from "@/lib/billing/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,11 +37,23 @@ export async function GET(request: NextRequest) {
     }> = [];
     for (const businessId of workspaces)
       try {
+        const briefAccess = await checkFeature(businessId, "dailyBrief");
+        if (!briefAccess.ok) {
+          results.push({
+            businessId,
+            ok: true,
+            result: { status: "plan_skipped" },
+          });
+          continue;
+        }
         // Prompt proposals only see this workspace's calls. Lack of usable
         // evidence does not stop the owner brief for the same workspace.
-        const promptPr = await runNightlyPromptPrJob(businessId).catch(() => ({
-          status: "skipped" as const,
-        }));
+        const promptPrAccess = await checkFeature(businessId, "promptPrs");
+        const promptPr = promptPrAccess.ok
+          ? await runNightlyPromptPrJob(businessId).catch(() => ({
+              status: "skipped" as const,
+            }))
+          : { status: "plan_skipped" as const };
         results.push({
           businessId,
           ok: true,

@@ -18,6 +18,7 @@ Indian distributors and wholesalers sell on credit, but the follow-up work still
 
 ## What Chase does
 
+- Offers Free, monthly/yearly Pro and sales-assisted Enterprise workspaces through Dodo-hosted subscription checkout and signed webhooks; live billing is configuration-dependent.
 - Ranks every account with a deterministic, explainable **Chase Rating**: probability of paying × amount × urgency ÷ effort.
 - Applies auditable R1–R11 contact gates before every call, callback and campaign attempt.
 - Gives Bolna seven authenticated tools for payment links, promises, status checks, callbacks, disputes, opt-outs and owner transfer.
@@ -122,7 +123,7 @@ Copy `.env.example` to `.env`; every example value is intentionally blank. Never
 | Messaging               | console by default; Meta or Twilio keys for external delivery                 |
 | Payments                | hosted simulator by default; merchant identity or Razorpay test keys          |
 
-See [the business workflow](docs/user-workflow.md), [setup](docs/setup.md), [LLM layer](docs/llm-layer.md) and [demo guide](docs/DEMO.md) for business onboarding, Google sign-in, imports, call controls, payment simulation, hosting and acceptance.
+See [Dodo subscription setup](docs/billing-dodo.md), [the business workflow](docs/user-workflow.md), [setup](docs/setup.md), [LLM layer](docs/llm-layer.md) and [demo guide](docs/DEMO.md) for business onboarding, Google sign-in, imports, call controls, payment simulation, hosting and acceptance.
 
 ## Roadmap
 

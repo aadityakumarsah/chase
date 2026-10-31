@@ -146,6 +146,18 @@ export const envSchema = z.object({
     .regex(/^whatsapp:\+[1-9]\d{6,14}$/)
     .optional(),
   TWILIO_SMS_FROM: phone.optional(),
+  // Subscription billing (Dodo Payments). Separate from PAYMENTS_* above, which
+  // is how a *debtor* pays a workspace; this is how a workspace pays Chase.
+  DODO_PAYMENTS_API_KEY: optional,
+  /** live_mode charges real cards. Defaults to test_mode so a missing value is safe. */
+  DODO_PAYMENTS_ENVIRONMENT: z
+    .enum(["live_mode", "test_mode"])
+    .default("test_mode"),
+  /** Standard Webhooks signing secret, `whsec_…`. */
+  DODO_WEBHOOK_SECRET: optional,
+  DODO_PRODUCT_PRO_MONTHLY: optional,
+  DODO_PRODUCT_PRO_YEARLY: optional,
+
   // Payments
   PAYMENTS_PROVIDER: z.enum(["hosted", "razorpay"]).default("hosted"),
   RAZORPAY_KEY_ID: optional,
@@ -255,6 +267,12 @@ export function configReport(
         ? ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"]
         : ["MERCHANT_UPI_VPA", "MERCHANT_NAME"],
     ),
+    billing: check([
+      "DODO_PAYMENTS_API_KEY",
+      "DODO_WEBHOOK_SECRET",
+      "DODO_PRODUCT_PRO_MONTHLY",
+      "DODO_PRODUCT_PRO_YEARLY",
+    ]),
     demoCalling: check(
       config.DEMO_MODE ? ["CALL_ALLOWLIST", "DEMO_DEBTOR_PHONE"] : [],
     ),

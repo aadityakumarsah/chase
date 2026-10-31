@@ -21,6 +21,9 @@ vi.mock("@/lib/promptprs", () => ({
   listPromptPRs: vi.fn(async () => []),
   generatePromptPR: vi.fn(async () => ({ id: "test" })),
 }));
+vi.mock("@/lib/billing/entitlements", () => ({
+  checkFeature: vi.fn(async () => ({ ok: true })),
+}));
 
 beforeEach(() => vi.clearAllMocks());
 

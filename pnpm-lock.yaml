@@ -205,6 +205,9 @@ importers:
       date-fns-tz:
         specifier: ^3.2.0
         version: 3.2.0(date-fns@4.4.0)
+      dodopayments:
+        specifier: ^2.59.0
+        version: 2.59.0
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(postgres@3.4.9)
@@ -247,6 +250,9 @@ importers:
       sonner:
         specifier: ^2.0.8
         version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      standardwebhooks:
+        specifier: ^1.1.1
+        version: 1.1.1
       swr:
         specifier: ^2.5.1
         version: 2.5.1(react@19.3.1)
@@ -2929,6 +2935,10 @@ packages:
   doctrine@2.1.0:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
+
+  dodopayments@2.59.0:
+    resolution: {integrity: sha512-hJUfgPis3ug1beOgl31rbj7W5A2+WmM3t/JnfTxdLELBuopNe1bV/kGpTgVuLJpRRuQ7fpmGyaJTS0A5/tVh0w==}
+    hasBin: true
 
   dot-prop@6.0.1:
     resolution: {integrity: sha512-tE7ztYzXHIeyvc7N+hR3oi7FIbf/NIjVP9hmAt3yMXzrQ072/fpjGLx2GxNxGxUl5V73MEqYzioOMoVhGMJ5cA==}
@@ -7410,6 +7420,10 @@ snapshots:
   doctrine@2.1.0:
     dependencies:
       esutils: 2.0.3
+
+  dodopayments@2.59.0:
+    dependencies:
+      standardwebhooks: 1.1.1
 
   dot-prop@6.0.1:
     dependencies:

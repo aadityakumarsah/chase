@@ -168,6 +168,37 @@ export const orgStatus = pgEnum("org_status", [
   "closed",
 ]);
 /**
+ * Billing tier a workspace is entitled to. Deliberately separate from `orgPlan`,
+ * which predates billing and stays an operations field: a tier is derived from a
+ * paid subscription or a sales agreement, never set by hand in the product.
+ */
+export const billingTier = pgEnum("billing_tier", [
+  "free",
+  "pro",
+  "enterprise",
+]);
+export const billingInterval = pgEnum("billing_interval", [
+  "monthly",
+  "yearly",
+]);
+/** Mirrors Dodo Payments' own subscription states so no mapping can drift. */
+export const subscriptionStatus = pgEnum("subscription_status", [
+  "pending",
+  "active",
+  "on_hold",
+  "paused",
+  "cancelled",
+  "failed",
+  "expired",
+  "past_due",
+]);
+export const enterpriseLeadStatus = pgEnum("enterprise_lead_status", [
+  "new",
+  "contacted",
+  "won",
+  "lost",
+]);
+/**
  * Why a workspace is permitted to contact a debtor. Recorded per debtor at import
  * and attested by a named user; replaces the single-tenant CALL_ALLOWLIST env var.
  */
@@ -204,6 +235,15 @@ export const businesses = pgTable(
     status: orgStatus("status").default("onboarding").notNull(),
     onboardedAt: ts("onboarded_at"),
     trialEndsAt: ts("trial_ends_at"),
+    /**
+     * Entitlement tier in force. Written only by the billing webhook or by an
+     * explicit enterprise agreement; the resolver in src/lib/billing treats an
+     * unexpired `trialEndsAt` as Pro so a new workspace is never crippled.
+     */
+    billingTier: billingTier("billing_tier").default("free").notNull(),
+    billingTierUpdatedAt: ts("billing_tier_updated_at"),
+    /** Dodo Payments customer handle, reused so a workspace keeps one customer. */
+    dodoCustomerId: text("dodo_customer_id"),
     name: text("name").notNull(),
     ownerName: text("owner_name").notNull(),
     ownerPhone: text("owner_phone").notNull(),
@@ -941,5 +981,127 @@ export const phoneVerifications = pgTable(
       sql`${t.phoneE164} ~ '^[+][1-9][0-9]{6,14}$'`,
     ),
     check("phone_verification_attempts", sql`${t.attempts} >= 0`),
+  ],
+);
+
+/**
+ * The paid relationship between a workspace and Dodo Payments.
+ *
+ * One row per Dodo subscription. A workspace may accumulate historical rows
+ * (cancelled, expired) and at most one that is currently billable; the partial
+ * unique index below is what enforces "at most one live subscription" in the
+ * database rather than in application code.
+ */
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: id(),
+    ...audit(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    tier: billingTier("tier").notNull(),
+    interval: billingInterval("interval").notNull(),
+    status: subscriptionStatus("status").default("pending").notNull(),
+    /** Dodo subscription id, absent until checkout completes. */
+    dodoSubscriptionId: text("dodo_subscription_id"),
+    dodoCustomerId: text("dodo_customer_id"),
+    dodoProductId: text("dodo_product_id").notNull(),
+    /** Checkout session that created this row; how a pending row is reconciled. */
+    checkoutSessionId: text("checkout_session_id"),
+    /** Recurring pre-tax amount in the currency's lowest denomination. */
+    amountMinor: paise("amount_minor"),
+    currency: text("currency").default("INR").notNull(),
+    currentPeriodEnd: ts("current_period_end"),
+    /** Ignore delayed webhooks older than the latest state already applied. */
+    lastDodoEventAt: ts("last_dodo_event_at"),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end")
+      .default(false)
+      .notNull(),
+    trialEndsAt: ts("trial_ends_at"),
+    cancelledAt: ts("cancelled_at"),
+    startedByUserId: uuid("started_by_user_id").references(() => appUsers.id),
+  },
+  (t) => [
+    index("subscriptions_business_idx").on(t.businessId, t.status),
+    uniqueIndex("subscriptions_dodo_id_uq").on(t.dodoSubscriptionId),
+    uniqueIndex("subscriptions_checkout_uq").on(t.checkoutSessionId),
+    // A workspace can hold only one subscription that still grants entitlement.
+    uniqueIndex("subscriptions_live_uq")
+      .on(t.businessId)
+      .where(sql`${t.status} IN ('active', 'past_due')`),
+    check(
+      "subscription_amount_nonnegative",
+      sql`${t.amountMinor} IS NULL OR ${t.amountMinor} >= 0`,
+    ),
+    check("subscription_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+  ],
+);
+
+/**
+ * Every verified billing webhook, stored before it is acted on.
+ *
+ * `dodoWebhookId` is the Standard Webhooks `webhook-id` header and is unique, so
+ * a redelivery (Dodo retries up to eight times) cannot apply an effect twice.
+ */
+export const billingEvents = pgTable(
+  "billing_events",
+  {
+    id: id(),
+    ...audit(),
+    /** Null when the payload could not be attributed to a known workspace. */
+    businessId: uuid("business_id").references(() => businesses.id, {
+      onDelete: "cascade",
+    }),
+    dodoWebhookId: text("dodo_webhook_id").notNull(),
+    type: text("type").notNull(),
+    payloadType: text("payload_type"),
+    dodoSubscriptionId: text("dodo_subscription_id"),
+    occurredAt: ts("occurred_at").notNull(),
+    payload: jsonb("payload").notNull(),
+    handledAt: ts("handled_at"),
+    /** Set when the event verified but could not be applied; kept for triage. */
+    error: text("error"),
+  },
+  (t) => [
+    uniqueIndex("billing_events_webhook_uq").on(t.dodoWebhookId),
+    index("billing_events_business_idx").on(t.businessId, t.occurredAt),
+    index("billing_events_subscription_idx").on(t.dodoSubscriptionId),
+  ],
+);
+
+/**
+ * "Talk to us" submissions for the Enterprise tier. Enterprise is deliberately
+ * sales-assisted: there is no self-serve checkout, so this is the only way that
+ * tier starts.
+ */
+export const enterpriseLeads = pgTable(
+  "enterprise_leads",
+  {
+    id: id(),
+    ...audit(),
+    /** Null when submitted from the public pricing page by a visitor. */
+    businessId: uuid("business_id").references(() => businesses.id, {
+      onDelete: "set null",
+    }),
+    userId: uuid("user_id").references(() => appUsers.id),
+    companyName: text("company_name").notNull(),
+    contactName: text("contact_name").notNull(),
+    email: text("email").notNull(),
+    phoneE164: text("phone_e164"),
+    seats: integer("seats"),
+    monthlyVolume: text("monthly_volume"),
+    message: text("message"),
+    status: enterpriseLeadStatus("status").default("new").notNull(),
+  },
+  (t) => [
+    index("enterprise_leads_status_idx").on(t.status, t.createdAt),
+    index("enterprise_leads_business_idx").on(t.businessId),
+    check("enterprise_lead_email", sql`position('@' in ${t.email}) > 1`),
+    check(
+      "enterprise_lead_phone",
+      sql`${t.phoneE164} IS NULL OR ${t.phoneE164} ~ '^[+][1-9][0-9]{6,14}$'`,
+    ),
+    check("enterprise_lead_seats", sql`${t.seats} IS NULL OR ${t.seats} > 0`),
   ],
 );

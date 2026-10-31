@@ -626,6 +626,7 @@ export function LandingPage() {
               </div>
               <a href="#walkthrough">How it works</a>
               <a href="#businesses">For your business</a>
+              <Link href="/pricing">Pricing</Link>
               <a href="#questions">FAQs</a>
             </nav>
             <div className={styles.navActions}>

@@ -44,6 +44,7 @@ Postgres + Drizzle ORM and drizzle-kit migrations; postgres-js driver. Zod at en
 
 - src/app/page.tsx — public Chase product homepage.
 - src/app/signup/, src/app/auth/, src/app/onboarding/, src/app/invite/ — accounts: sign-up, OAuth callback, sign-out, workspace creation, invitation acceptance.
+- src/lib/billing/ — Dodo subscription plans, entitlements, checkout and signed webhook state. Chase billing is separate from debtor UPI payments.
 - src/lib/tenancy/ — workspaces, membership roles, the API authorization guard, onboarding, team invitations and per-workspace settings.
 - src/lib/supabase/ — server, browser and admin Supabase clients.
 - src/app/(dashboard)/ — protected dashboard pages; overview at /dashboard.
@@ -98,8 +99,9 @@ Scaffold all named dependencies and folders; env loader with aliases/defaults/co
 
 ## Commands
 
-Use Node >=20.19 and `corepack enable`. `pnpm install` installs pinned lockfile dependencies (use `corepack pnpm` if the shell shim differs).
+Use Node 22 or newer and `corepack enable`. `pnpm install` installs pinned lockfile dependencies (use `corepack pnpm` if the shell shim differs).
 
+- pnpm billing:verify — read-only Dodo product price/frequency check; requires configured keys. See docs/billing-dodo.md.
 - pnpm dev / build / start — Next.js development / production build / server.
 - pnpm typecheck / lint / test — required checks; tests use fixtures and make no live calls.
 - pnpm smoke — status/missing names, optional DB ping, Bolna name/wallet/concurrency and agent names/IDs, optional 5-token LLM ping; never secrets.

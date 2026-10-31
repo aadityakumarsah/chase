@@ -3,6 +3,7 @@ import { z } from "zod";
 import { runDailyBrief } from "@/lib/brief";
 import { deliveryChannelSchema } from "@/lib/brief/types";
 import { requireMember } from "@/lib/tenancy/guard";
+import { checkFeature, denialBody } from "@/lib/billing/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,9 @@ const bodySchema = z.object({
 export async function POST(request: NextRequest) {
   const auth = await requireMember(request, { mutation: true });
   if (!auth.ok) return auth.response;
+  const allowance = await checkFeature(auth.businessId, "dailyBrief");
+  if (!allowance.ok)
+    return NextResponse.json(denialBody(allowance), { status: 402 });
   try {
     const body = bodySchema.parse(await request.json());
     return NextResponse.json(

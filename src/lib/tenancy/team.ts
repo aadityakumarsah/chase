@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { appUsers, businesses, orgInvites, orgMembers } from "@/lib/db/schema";
 import { emitEvent } from "@/lib/events";
 import type { MemberRole } from "@/lib/tenancy";
+import { checkLimit } from "@/lib/billing/entitlements";
 
 export const INVITE_TTL_HOURS = 72;
 
@@ -191,6 +192,10 @@ export async function acceptInvite(
     return { ok: false as const, reason: "expired" as const };
   if (invite.email.toLowerCase() !== user.email.toLowerCase())
     return { ok: false as const, reason: "wrong_account" as const };
+
+  const seatAllowance = await checkLimit(invite.businessId, "seats");
+  if (!seatAllowance.ok)
+    return { ok: false as const, reason: "plan_limit" as const };
 
   await db.transaction(async (tx) => {
     await tx
