@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/dashboard/client";
 import { useReadOnly } from "@/components/read-only-context";
+import { LoadFailure } from "./load-failure";
 
 type Workspace = {
   id: string;
@@ -53,15 +54,24 @@ const Field = ({
  */
 export function WorkspaceSettings() {
   const readOnly = useReadOnly();
-  const { data, mutate } = useSWR<{ workspace: Workspace; role: string }>(
-    "/api/workspace",
-    apiFetch,
-  );
+  const { data, error, mutate } = useSWR<{
+    workspace: Workspace;
+    role: string;
+  }>("/api/workspace", apiFetch);
   const [saving, setSaving] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
 
+  if (!data)
+    if (error)
+      return (
+        <LoadFailure
+          error={error}
+          retry={() => void mutate()}
+          title="Workspace settings unavailable"
+        />
+      );
   if (!data)
     return (
       <Card>

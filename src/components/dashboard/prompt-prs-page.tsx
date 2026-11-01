@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeading } from "@/components/page-heading";
 import { RelativeTime } from "@/components/relative-time";
 import { cn } from "@/lib/utils";
+import { LoadFailure } from "./load-failure";
 
 type Row = {
   id: string;
@@ -41,9 +42,13 @@ const FILTERS = [
 ] as const;
 
 export function PromptPrsPage() {
-  const { data } = useSWR<{ items: Row[] }>("/api/prompt-prs", apiFetch, {
-    refreshInterval: 10_000,
-  });
+  const { data, error, mutate } = useSWR<{ items: Row[] }>(
+    "/api/prompt-prs",
+    apiFetch,
+    {
+      refreshInterval: 10_000,
+    },
+  );
   const [filter, setFilter] = useState<string>("all");
 
   const counts = useMemo(() => {
@@ -96,7 +101,13 @@ export function PromptPrsPage() {
         </div>
       )}
 
-      {!data ? (
+      {!data && error ? (
+        <LoadFailure
+          error={error}
+          retry={() => void mutate()}
+          title="Prompt improvements unavailable"
+        />
+      ) : !data ? (
         <div className="grid gap-4">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />

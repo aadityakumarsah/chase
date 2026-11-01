@@ -14,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/dashboard/client";
+import { LoadFailure } from "./load-failure";
 import {
   PLANS,
   PLAN_ORDER,
@@ -54,12 +56,6 @@ type BillingData = {
   role: string;
 };
 
-const fetcher = async (url: string): Promise<BillingData> => {
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) throw new Error("Could not load billing");
-  return response.json();
-};
-
 const METERS = [
   {
     label: "Debtor accounts",
@@ -96,9 +92,14 @@ export function BillingPage({
 }: {
   checkout: "done" | "cancelled" | null;
 }) {
-  const { data, error, mutate } = useSWR("/api/billing", fetcher, {
-    refreshInterval: checkout === "done" ? 5_000 : 30_000,
-  });
+  const { data, error, mutate } = useSWR<BillingData>(
+    "/api/billing",
+    apiFetch,
+    {
+      refreshInterval: checkout === "done" ? 5_000 : 30_000,
+      keepPreviousData: true,
+    },
+  );
   const [interval, setInterval] = useState<BillingInterval>("monthly");
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -131,16 +132,13 @@ export function BillingPage({
     }
   }
 
-  if (error)
+  if (!data && error)
     return (
-      <div className="rounded-xl border bg-card p-6">
-        <p role="alert" className="text-sm">
-          Billing is unavailable right now.
-        </p>
-        <Button className="mt-4" onClick={() => void mutate()}>
-          Retry
-        </Button>
-      </div>
+      <LoadFailure
+        error={error}
+        retry={() => void mutate()}
+        title="Billing unavailable"
+      />
     );
 
   if (!data)

@@ -26,6 +26,7 @@ import type { QueueItem } from "@/lib/dashboard/types";
 import { PageHeading } from "@/components/page-heading";
 import { QueuePanel } from "./queue-panel";
 import { AddDebtorDialog } from "./add-debtor-dialog";
+import { LoadFailure } from "./load-failure";
 
 const BLANK = {
   search: "",
@@ -72,7 +73,7 @@ export function DebtorsPage() {
     return params.toString();
   }, [filters]);
 
-  const { data, isLoading, mutate } = useSWR<{ items: QueueItem[] }>(
+  const { data, error, isLoading, mutate } = useSWR<{ items: QueueItem[] }>(
     `/api/debtors?${query}`,
     apiFetch,
     { refreshInterval: 15_000, keepPreviousData: true },
@@ -185,19 +186,26 @@ export function DebtorsPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Stat
-          label="Accounts"
-          value={summary.accounts.toLocaleString("en-IN")}
-        />
-        <Stat label="Outstanding" value={inr(summary.outstanding)} />
-        <Stat label="Promised" value={inr(summary.promised)} />
-        <Stat label="Overdue" value={summary.overdue.toLocaleString("en-IN")} />
-        <Stat
-          label="Callable now"
-          value={summary.callable.toLocaleString("en-IN")}
-        />
-      </div>
+      {data ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <Stat
+            label="Accounts"
+            value={summary.accounts.toLocaleString("en-IN")}
+          />
+          <Stat label="Outstanding" value={inr(summary.outstanding)} />
+          <Stat label="Promised" value={inr(summary.promised)} />
+          <Stat
+            label="Overdue"
+            value={summary.overdue.toLocaleString("en-IN")}
+          />
+          <Stat
+            label="Callable now"
+            value={summary.callable.toLocaleString("en-IN")}
+          />
+        </div>
+      ) : !error ? (
+        <Skeleton className="h-20 w-full" />
+      ) : null}
 
       <div className="space-y-3 rounded-xl border bg-card p-4">
         <div className="grid gap-3 md:grid-cols-[1.6fr_repeat(3,1fr)]">
@@ -366,7 +374,13 @@ export function DebtorsPage() {
         )}
       </div>
 
-      {isLoading && !data ? (
+      {!data && error ? (
+        <LoadFailure
+          error={error}
+          retry={() => void mutate()}
+          title="Accounts unavailable"
+        />
+      ) : isLoading && !data ? (
         <Skeleton className="h-[560px]" />
       ) : (
         <QueuePanel items={items} />

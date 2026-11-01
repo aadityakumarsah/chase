@@ -33,6 +33,7 @@ import type {
   BriefNarrative,
 } from "@/lib/brief/types";
 import { useReadOnly } from "@/components/read-only-context";
+import { LoadFailure } from "./load-failure";
 
 type Brief = {
   id: string;
@@ -51,7 +52,7 @@ type Data = {
 export function BriefPage({ date }: { date?: string }) {
   const readOnly = useReadOnly();
   const endpoint = date ? `/api/brief/${date}` : "/api/brief";
-  const { data, mutate } = useSWR<Data>(endpoint, apiFetch, {
+  const { data, error, mutate } = useSWR<Data>(endpoint, apiFetch, {
     refreshInterval: 10_000,
   });
   const [running, setRunning] = useState(false);
@@ -75,6 +76,17 @@ export function BriefPage({ date }: { date?: string }) {
       setRunning(false);
     }
   };
+  if (!data)
+    if (error)
+      return (
+        <main className="p-5 lg:p-8">
+          <LoadFailure
+            error={error}
+            retry={() => void mutate()}
+            title="Daily brief unavailable"
+          />
+        </main>
+      );
   if (!data)
     return (
       <main className="space-y-5 p-5 lg:p-8">

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { apiFetch } from "@/lib/dashboard/client";
 import { useReadOnly } from "@/components/read-only-context";
+import { LoadFailure } from "./load-failure";
 
 type Member = {
   id: string;
@@ -44,10 +45,10 @@ const ROLE_HELP: Record<string, string> = {
 
 export function TeamSettings() {
   const readOnly = useReadOnly();
-  const { data, mutate } = useSWR<{ members: Member[]; invites: Invite[] }>(
-    "/api/team",
-    apiFetch,
-  );
+  const { data, error, mutate } = useSWR<{
+    members: Member[];
+    invites: Invite[];
+  }>("/api/team", apiFetch);
   const [busy, setBusy] = useState(false);
   const [role, setRole] = useState("operator");
   const [lastLink, setLastLink] = useState<string | null>(null);
@@ -86,6 +87,15 @@ export function TeamSettings() {
     await mutate();
   }
 
+  if (!data)
+    if (error)
+      return (
+        <LoadFailure
+          error={error}
+          retry={() => void mutate()}
+          title="Team unavailable"
+        />
+      );
   if (!data)
     return (
       <Card>

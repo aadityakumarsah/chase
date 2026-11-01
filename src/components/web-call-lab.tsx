@@ -4,6 +4,7 @@ import useSWR from "swr";
 import { BolnaWebCall, type CallState } from "@bolna/web-call";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiFetch } from "@/lib/dashboard/client";
 export function WebCallLab({
   debtors,
   initialDebtorId,
@@ -20,13 +21,9 @@ export function WebCallLab({
   const [state, setState] = useState<CallState>("idle");
   const [events, setEvents] = useState<string[]>([]);
   const callRef = useRef<BolnaWebCall | null>(null);
-  const { data, error, isLoading } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     selected ? `/api/web-call/context?debtorId=${selected}` : null,
-    async (url: string) => {
-      const r = await fetch(url);
-      if (!r.ok) throw new Error("Preview unavailable");
-      return r.json() as Promise<Record<string, string | number>>;
-    },
+    (url: string) => apiFetch<Record<string, string | number>>(url),
   );
   const active = ["connecting", "ringing", "active"].includes(state);
   useEffect(
@@ -135,7 +132,14 @@ export function WebCallLab({
             each session.
           </p>
           {error ? (
-            <p role="alert">Could not load account context.</p>
+            <div role="alert" className="space-y-3 text-sm">
+              <p>
+                Could not load account context. The request may have timed out.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => void mutate()}>
+                Try again
+              </Button>
+            </div>
           ) : isLoading ? (
             <p>Loading context…</p>
           ) : (

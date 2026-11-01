@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LoadFailure } from "./load-failure";
 
 type Result = {
   persona: string;
@@ -39,9 +40,22 @@ type Detail = {
 };
 
 export function PromptPrDetailPage({ id }: { id: string }) {
-  const { data, mutate } = useSWR<Detail>(`/api/prompt-prs/${id}`, apiFetch);
+  const {
+    data,
+    error: loadError,
+    mutate,
+  } = useSWR<Detail>(`/api/prompt-prs/${id}`, apiFetch);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  if (!data)
+    if (loadError)
+      return (
+        <LoadFailure
+          error={loadError}
+          retry={() => void mutate()}
+          title="Prompt proposal unavailable"
+        />
+      );
   if (!data)
     return (
       <div className="space-y-4">

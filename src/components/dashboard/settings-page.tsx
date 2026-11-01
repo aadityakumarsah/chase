@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RelativeTime } from "@/components/relative-time";
 import { apiFetch, sentence } from "@/lib/dashboard/client";
 import type { settingsDashboard } from "@/lib/dashboard/queries";
+import { LoadFailure } from "./load-failure";
 
 type Data = Awaited<ReturnType<typeof settingsDashboard>> & {
   syncAvailable: boolean;
@@ -26,7 +27,7 @@ type Data = Awaited<ReturnType<typeof settingsDashboard>> & {
 };
 
 export function SettingsPage() {
-  const { data, mutate } = useSWR<Data>("/api/settings", apiFetch, {
+  const { data, error, mutate } = useSWR<Data>("/api/settings", apiFetch, {
     refreshInterval: 10_000,
   });
   const [syncing, setSyncing] = useState(false);
@@ -52,6 +53,15 @@ export function SettingsPage() {
     else toast.error("Health check failed");
   }
 
+  if (!data)
+    if (error)
+      return (
+        <LoadFailure
+          error={error}
+          retry={() => void mutate()}
+          title="Settings unavailable"
+        />
+      );
   if (!data)
     return (
       <div className="space-y-5">

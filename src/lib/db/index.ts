@@ -14,9 +14,11 @@ const globalDb = globalThis as unknown as {
 export function getSql() {
   const { DATABASE_URL } = getEnv();
   if (!DATABASE_URL) throw new Error("Missing DATABASE_URL");
-  // One short-lived connection per warm function, compatible with transaction poolers.
+  // A small pool per warm function: the dashboard issues several requests at
+  // once, and a single socket made them queue behind each other. Still well
+  // within what a transaction pooler expects from one serverless instance.
   return (globalDb.chaseSql ??= postgres(DATABASE_URL, {
-    max: 1,
+    max: 3,
     connect_timeout: 5,
     idle_timeout: 20,
     max_lifetime: 60 * 30,

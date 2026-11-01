@@ -9,6 +9,7 @@ import { PageHeading } from "@/components/page-heading";
 import { RelativeTime } from "@/components/relative-time";
 import { apiFetch, sentence } from "@/lib/dashboard/client";
 import type { complianceDashboard } from "@/lib/dashboard/queries";
+import { LoadFailure } from "./load-failure";
 type Data = Awaited<ReturnType<typeof complianceDashboard>>;
 const rules = [
   ["R1", "Demo calls require an allowlisted, consenting tester."],
@@ -24,9 +25,20 @@ const rules = [
   ["R11", "Send first-contact disclosure before dialing."],
 ];
 export function CompliancePage() {
-  const { data } = useSWR<Data>("/api/compliance", apiFetch, {
+  const { data, error, mutate } = useSWR<Data>("/api/compliance", apiFetch, {
     refreshInterval: 10_000,
   });
+  if (!data)
+    if (error)
+      return (
+        <main className="p-5 lg:p-8">
+          <LoadFailure
+            error={error}
+            retry={() => void mutate()}
+            title="Compliance ledger unavailable"
+          />
+        </main>
+      );
   if (!data)
     return (
       <main className="space-y-5 p-8">

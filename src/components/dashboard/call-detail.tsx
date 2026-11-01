@@ -21,16 +21,45 @@ import { PageHeading } from "@/components/page-heading";
 import { RelativeTime } from "@/components/relative-time";
 import { apiFetch, sentence } from "@/lib/dashboard/client";
 import type { callDetail } from "@/lib/dashboard/queries";
+import { LoadFailure } from "./load-failure";
 type Detail = NonNullable<Awaited<ReturnType<typeof callDetail>>>;
 const obj = (value: unknown) =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+/** A call that has ended will not change again, so stop polling it hard. */
+const TERMINAL = new Set([
+  "completed",
+  "failed",
+  "busy",
+  "no-answer",
+  "cancelled",
+  "canceled",
+  "stopped",
+  "balance-low",
+  "error",
+]);
+
 export function CallDetail({ id }: { id: string }) {
-  const { data, mutate } = useSWR<Detail>(`/api/calls/${id}`, apiFetch, {
-    refreshInterval: 1500,
+  const { data, error, mutate } = useSWR<Detail>(`/api/calls/${id}`, apiFetch, {
+    // Live while the call is on the line, then back off to an occasional check.
+    refreshInterval: (latest) =>
+      TERMINAL.has(latest?.call.status ?? "") ? 30_000 : 2_000,
+    keepPreviousData: true,
+    dedupingInterval: 1_000,
   });
   const [busy, setBusy] = useState(false);
+  if (!data)
+    if (error)
+      return (
+        <main className="p-5 lg:p-8">
+          <LoadFailure
+            error={error}
+            retry={() => void mutate()}
+            title="Call record unavailable"
+          />
+        </main>
+      );
   if (!data)
     return (
       <main className="space-y-5 p-8">

@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { motion } from "framer-motion";
 import {
@@ -21,10 +22,33 @@ import type {
 import { QueuePanel } from "./queue-panel";
 import { EventTicker } from "./event-ticker";
 import { LiveCallPanel, PhoneMockup } from "./live-call-panel";
+import { LoadFailure } from "./load-failure";
 
-function Loading() {
+function Loading({
+  slow = false,
+  onRetry,
+}: {
+  slow?: boolean;
+  onRetry?: () => void;
+}) {
   return (
     <div className="space-y-5 p-8">
+      {slow && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3"
+        >
+          <p className="text-sm text-muted-foreground">
+            Still loading your workspace. The first request after a quiet spell
+            can take a few seconds.
+          </p>
+          {onRetry && (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              Retry now
+            </Button>
+          )}
+        </div>
+      )}
       <Skeleton className="h-24 w-full" />
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         {Array.from({ length: 5 }, (_, i) => (
@@ -38,45 +62,65 @@ function Loading() {
     </div>
   );
 }
+/**
+ * Polling cadence.
+ *
+ * A second-by-second refresh only earns its cost while a call is actually in
+ * progress; the rest of the time three endpoints at 1.5s was ~2 requests a
+ * second, each re-authenticating and re-querying, which is what made the
+ * dashboard feel stuck. Idle polling is therefore slow and live polling fast.
+ */
+const LIVE_MS = 2_000;
+const IDLE_MS = 20_000;
+type HomeData = {
+  summary: DashboardSummary;
+  queue: QueueItem[];
+  events: DashboardEvent[];
+};
+const activeStatuses = new Set([
+  "queued",
+  "initiated",
+  "ringing",
+  "in-progress",
+  "in_progress",
+  "call-disconnected",
+]);
+
 export function CommandCenter() {
-  const summary = useSWR<DashboardSummary>("/api/dashboard/summary", apiFetch, {
-    refreshInterval: 1500,
+  const [slowTimer, setSlowTimer] = useState(false);
+  const home = useSWR<HomeData>("/api/dashboard/home", apiFetch, {
+    refreshInterval: (latest) =>
+      latest?.summary.liveCall &&
+      activeStatuses.has(latest.summary.liveCall.status)
+        ? LIVE_MS
+        : IDLE_MS,
+    keepPreviousData: true,
+    dedupingInterval: 1_000,
   });
-  const queue = useSWR<{ items: QueueItem[] }>("/api/queue", apiFetch, {
-    refreshInterval: 1500,
-  });
-  const feed = useSWR<{ events: DashboardEvent[] }>(
-    "/api/events?limit=40",
-    apiFetch,
-    { refreshInterval: 1500 },
-  );
-  if (!summary.data || !queue.data) {
-    if (summary.error || queue.error || feed.error)
+
+  const settled = Boolean(home.data);
+  // Only announce slowness while nothing has arrived yet.
+  const slow = slowTimer && !settled;
+  useEffect(() => {
+    if (settled) return;
+    const timer = window.setTimeout(() => setSlowTimer(true), 6_000);
+    return () => window.clearTimeout(timer);
+  }, [settled]);
+  if (!home.data) {
+    if (home.error)
       return (
         <main className="p-5 lg:p-8">
-          <div role="alert" className="rounded-xl border bg-card p-8">
-            <h1 className="text-xl font-semibold">Workspace unavailable</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              We couldn’t load your accounts. Check your connection and try
-              again.
-            </p>
-            <Button
-              className="mt-5"
-              variant="outline"
-              onClick={() => {
-                void summary.mutate();
-                void queue.mutate();
-                void feed.mutate();
-              }}
-            >
-              Try again
-            </Button>
-          </div>
+          <LoadFailure
+            error={home.error}
+            retry={() => void home.mutate()}
+            title="Workspace unavailable"
+          />
         </main>
       );
-    return <Loading />;
+    return <Loading slow={slow} onRetry={() => void home.mutate()} />;
   }
-  const { business, meta, kpis, liveCall } = summary.data;
+  const { summary, queue, events } = home.data;
+  const { business, meta, kpis, liveCall } = summary;
   const cards = [
     [
       "Outstanding",
@@ -150,7 +194,7 @@ export function CommandCenter() {
           )}
         </div>
       </div>
-      {(summary.error || queue.error || feed.error) && (
+      {home.error && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-500">
           Live data is reconnecting. The last successful snapshot remains
           visible.
@@ -189,11 +233,10 @@ export function CommandCenter() {
               </p>
             </div>
             <Badge variant="outline">
-              {queue.data.items.filter((item) => item.allowed).length} callable
-              now
+              {queue.filter((item) => item.allowed).length} callable now
             </Badge>
           </div>
-          <QueuePanel items={queue.data.items.slice(0, 12)} />
+          <QueuePanel items={queue.slice(0, 12)} />
         </div>
         <div className="grid min-w-0 items-start gap-5 md:grid-cols-2 min-[1600px]:grid-cols-1">
           <Card className="shadow-none">
@@ -214,7 +257,7 @@ export function CommandCenter() {
           </Card>
         </div>
       </section>
-      <EventTicker events={feed.data?.events ?? []} />
+      <EventTicker events={events} />
     </main>
   );
 }

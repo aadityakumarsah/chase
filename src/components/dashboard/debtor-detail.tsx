@@ -24,12 +24,28 @@ import { PageHeading } from "@/components/page-heading";
 import { RelativeTime } from "@/components/relative-time";
 import { apiFetch, inr, sentence } from "@/lib/dashboard/client";
 import type { debtorDetail } from "@/lib/dashboard/queries";
+import { LoadFailure } from "./load-failure";
 type Detail = NonNullable<Awaited<ReturnType<typeof debtorDetail>>>;
 
 export function DebtorDetail({ id }: { id: string }) {
-  const { data } = useSWR<Detail>(`/api/debtors/${id}`, apiFetch, {
-    refreshInterval: 10_000,
-  });
+  const { data, error, mutate } = useSWR<Detail>(
+    `/api/debtors/${id}`,
+    apiFetch,
+    {
+      refreshInterval: 10_000,
+    },
+  );
+  if (!data)
+    if (error)
+      return (
+        <main className="p-5 lg:p-8">
+          <LoadFailure
+            error={error}
+            retry={() => void mutate()}
+            title="Account unavailable"
+          />
+        </main>
+      );
   if (!data)
     return (
       <main className="space-y-5 p-8">

@@ -26,11 +26,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeading } from "@/components/page-heading";
 import { apiFetch, sentence } from "@/lib/dashboard/client";
 import type { aiOps } from "@/lib/dashboard/queries";
+import { LoadFailure } from "./load-failure";
 type Data = Awaited<ReturnType<typeof aiOps>>;
 export function AiOpsPage() {
-  const { data } = useSWR<Data>("/api/ai-ops", apiFetch, {
+  const { data, error, mutate } = useSWR<Data>("/api/ai-ops", apiFetch, {
     refreshInterval: 10_000,
   });
+  if (!data)
+    if (error)
+      return (
+        <main className="p-5 lg:p-8">
+          <LoadFailure
+            error={error}
+            retry={() => void mutate()}
+            title="AI activity unavailable"
+          />
+        </main>
+      );
   if (!data)
     return (
       <main className="space-y-5 p-8">

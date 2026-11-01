@@ -85,24 +85,24 @@ export async function dashboardQueue(
   const rows = (await client`
     with rating_ranked as (
       select r.*, row_number() over (partition by debtor_id order by computed_at desc, id desc) rn
-      from chase_ratings r
+      from chase_ratings r where r.business_id = ${businessId}
     ), invoice_totals as (
       select debtor_id,
         coalesce(sum(amount_paise-paid_paise) filter (where status not in ('paid','written_off')),0)::text outstanding_paise,
         greatest(0, coalesce((${today}::date - min(due_on) filter (where status not in ('paid','written_off'))),0))::int days_past_due
-      from invoices group by debtor_id
+      from invoices where business_id = ${businessId} group by debtor_id
     ), attempts as (
       select debtor_id,
         count(*) filter (where created_at >= ${dayStart})::int attempts_today,
         count(*) filter (where created_at >= ${weekStart})::int attempts_week,
         max(created_at) last_attempt_at
-      from calls where purpose='collection' group by debtor_id
+      from calls where business_id = ${businessId} and purpose='collection' group by debtor_id
     ), active_promises as (
       select distinct on (debtor_id) debtor_id, promised_for, amount_paise
-      from promises where status='pending' and promised_for >= ${today}
+      from promises where business_id = ${businessId} and status='pending' and promised_for >= ${today}
       order by debtor_id, promised_for
     ), active_optouts as (
-      select debtor_id, true opted_out from opt_outs where cleared_at is null group by debtor_id
+      select debtor_id, true opted_out from opt_outs where business_id = ${businessId} and cleared_at is null group by debtor_id
     )
     select d.id debtor_id, d.shop_name, d.contact_name, d.phone_e164,
       d.preferred_language, d.status, d.first_contact_disclosed_at, d.consent_basis,

@@ -51,10 +51,14 @@ const terminal = new Set([
 export function StageView() {
   const readOnly = useReadOnly();
   const summary = useSWR<DashboardSummary>("/api/dashboard/summary", apiFetch, {
-    refreshInterval: 1500,
+    refreshInterval: 2_000,
+    keepPreviousData: true,
+    dedupingInterval: 1_000,
   });
   const queue = useSWR<{ items: QueueItem[] }>("/api/queue", apiFetch, {
-    refreshInterval: 1500,
+    refreshInterval: 2_000,
+    keepPreviousData: true,
+    dedupingInterval: 1_000,
   });
   const [legend, setLegend] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);

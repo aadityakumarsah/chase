@@ -15,7 +15,7 @@ export function DemoControls() {
   const { data, mutate } = useSWR<DashboardSummary>(
     "/api/dashboard/summary",
     apiFetch,
-    { refreshInterval: 1500 },
+    { refreshInterval: 15_000, keepPreviousData: true },
   );
 
   async function run(
