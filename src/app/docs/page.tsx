@@ -11,5 +11,6 @@ export const metadata: Metadata = {
 };
 
 export default function DocsPage() {
-  return <DocsSite doc={productDocs[0]} />;
+  // Keyed so navigating between guides remounts and restarts the scroll chain.
+  return <DocsSite key={productDocs[0].slug} doc={productDocs[0]} />;
 }

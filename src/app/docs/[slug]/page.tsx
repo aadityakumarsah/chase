@@ -25,5 +25,6 @@ export default async function DocDetailPage({ params }: Props) {
   const { slug } = await params;
   const doc = findProductDoc(slug);
   if (!doc || slug === "overview") notFound();
-  return <DocsSite doc={doc} />;
+  // Keyed so navigating between guides remounts and restarts the scroll chain.
+  return <DocsSite key={doc.slug} doc={doc} />;
 }

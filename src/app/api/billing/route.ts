@@ -45,6 +45,17 @@ export async function GET(request: NextRequest) {
         : null,
       /** False when Dodo is not configured, so the UI can hide upgrade buttons. */
       checkoutAvailable: billingConfigured() && productCatalogueComplete(),
+      /**
+       * Why checkout is unavailable, so the page can say so instead of showing
+       * a dead button. Null when nothing is blocking it.
+       */
+      checkoutBlockedReason: !billingConfigured()
+        ? ("no_payment_provider" as const)
+        : !productCatalogueComplete()
+          ? ("no_products" as const)
+          : auth.role !== "owner"
+            ? ("not_owner" as const)
+            : null,
       portalAvailable: billingConfigured() && Boolean(state.dodoCustomerId),
       billingEnvironment: getEnv().DODO_PAYMENTS_ENVIRONMENT,
       role: auth.role,

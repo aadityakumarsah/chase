@@ -47,6 +47,8 @@ type BillingData = {
     currency: string;
   } | null;
   checkoutAvailable: boolean;
+  checkoutBlockedReason:
+    "no_payment_provider" | "no_products" | "not_owner" | null;
   portalAvailable: boolean;
   billingEnvironment: "test_mode" | "live_mode";
   role: string;
@@ -157,6 +159,15 @@ export function BillingPage({
     );
 
   const isOwner = data.role === "owner";
+  /** Human explanation for a disabled upgrade button, or null when it works. */
+  const blocked: string | null =
+    data.checkoutBlockedReason === "not_owner" || !isOwner
+      ? "Only the workspace owner can change the plan."
+      : data.checkoutBlockedReason === "no_payment_provider"
+        ? "Payments are not connected yet. Add your Dodo keys in Vercel."
+        : data.checkoutBlockedReason === "no_products"
+          ? "No Dodo product is configured for this plan yet."
+          : null;
   const trialing = data.source === "trial";
   const subscribed = data.source === "subscription";
   const savings = yearlySavingPercent("pro");
@@ -398,39 +409,44 @@ export function BillingPage({
                     </li>
                   ))}
                 </ul>
-                <div className="mt-5">
+                <div className="mt-5 space-y-2">
                   {tier === "enterprise" ? (
                     <Button variant="outline" className="w-full" asChild>
                       <Link href="/contact-sales">
                         {plan.cta} <ExternalLink size={13} />
                       </Link>
                     </Button>
+                  ) : current || (tier === "free" && data.tier === "free") ? (
+                    <p className="rounded-md bg-muted py-2 text-center text-xs font-medium text-muted-foreground">
+                      This is your plan
+                    </p>
                   ) : tier === "free" ? (
-                    <Button variant="outline" className="w-full" disabled>
-                      {data.tier === "free" ? "Your plan" : "Included"}
-                    </Button>
-                  ) : current ? (
-                    <Button variant="outline" className="w-full" disabled>
-                      Your plan
-                    </Button>
+                    <p className="rounded-md bg-muted py-2 text-center text-xs text-muted-foreground">
+                      Included in every plan
+                    </p>
                   ) : (
-                    <Button
-                      className="w-full"
-                      disabled={
-                        !isOwner || !data.checkoutAvailable || busy !== null
-                      }
-                      onClick={() =>
-                        void navigate("/api/billing/checkout", "checkout", {
-                          tier: "pro",
-                          interval,
-                        })
-                      }
-                    >
-                      {busy === "checkout" && (
-                        <Loader2 size={15} className="animate-spin" />
+                    <>
+                      <Button
+                        className="w-full"
+                        disabled={blocked !== null || busy !== null}
+                        onClick={() =>
+                          void navigate("/api/billing/checkout", "checkout", {
+                            tier: "pro",
+                            interval,
+                          })
+                        }
+                      >
+                        {busy === "checkout" && (
+                          <Loader2 size={15} className="animate-spin" />
+                        )}
+                        {plan.cta}
+                      </Button>
+                      {blocked && (
+                        <p className="text-center text-[11px] leading-4 text-muted-foreground">
+                          {blocked}
+                        </p>
                       )}
-                      {plan.cta}
-                    </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -445,12 +461,6 @@ export function BillingPage({
               : "Payments are live and will be charged."}
           </span>
           <span>Dodo checkout shows tax and the final renewal amount.</span>
-          {!isOwner && (
-            <span>Only the workspace owner can change billing.</span>
-          )}
-          {!data.checkoutAvailable && (
-            <span>Checkout is not configured yet.</span>
-          )}
         </div>
 
         {actionError && (

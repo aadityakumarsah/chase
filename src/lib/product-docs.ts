@@ -1,10 +1,15 @@
+/** Diagram styles available to a section. */
+export type DocFlowVariant =
+  "overview" | "rating" | "call" | "import" | "payment" | "brief";
+
 export type DocBlock =
   | { kind: "text"; text: string }
   | { kind: "list"; items: string[] }
   | { kind: "steps"; items: { title: string; text: string }[] }
   | { kind: "code"; label: string; code: string }
   | { kind: "note"; title: string; text: string }
-  | { kind: "flow"; variant: "overview" | "rating" | "call" };
+  | { kind: "table"; caption: string; columns: string[]; rows: string[][] }
+  | { kind: "flow"; variant: DocFlowVariant };
 
 export type DocSection = { id: string; title: string; blocks: DocBlock[] };
 export type ProductDoc = {
@@ -104,6 +109,7 @@ export const productDocs: ProductDoc[] = [
               },
             ],
           },
+          { kind: "flow", variant: "import" },
           {
             kind: "note",
             title: "During a demo",
@@ -325,6 +331,7 @@ export const productDocs: ProductDoc[] = [
             kind: "text",
             text: "During an eligible call, the agent can request a hosted UPI link for an amount the customer agrees to pay. Depending on your messaging setup, it is delivered through WhatsApp/SMS or shown as a clearly labelled console simulation. The public pay page displays the business payee, amount and UPI QR.",
           },
+          { kind: "flow", variant: "payment" },
           {
             kind: "note",
             title: "Confirmation matters",
@@ -369,6 +376,7 @@ export const productDocs: ProductDoc[] = [
             kind: "text",
             text: "At the scheduled 19:15 IST run, Chase compiles calls, promises, collected amounts, broken commitments, disputes and tomorrow’s priority queue for each workspace. The brief appears in the dashboard; configured delivery may message or call the verified owner.",
           },
+          { kind: "flow", variant: "brief" },
           {
             kind: "note",
             title: "Owner calls are different",
@@ -424,6 +432,17 @@ export const productDocs: ProductDoc[] = [
             text: "Free lets a small business begin without a card. Pro adds higher account, call and seat limits plus campaigns, briefs and Prompt PR review. The displayed Pro price is ₹2,499/month or ₹24,990/year before applicable tax. Enterprise is a sales conversation, not an automatic checkout.",
           },
           {
+            kind: "table",
+            caption: "Monthly limits by plan",
+            columns: ["", "Free", "Pro", "Enterprise"],
+            rows: [
+              ["Debtor accounts", "10", "2,000", "Unlimited"],
+              ["Voice calls", "10", "1,500", "Unlimited"],
+              ["Team members", "2", "10", "Unlimited"],
+              ["Campaigns & brief", "—", "Included", "Included"],
+            ],
+          },
+          {
             kind: "note",
             title: "Billing confirmation",
             text: "Only the workspace owner can start Dodo checkout or open the customer portal in Settings → Billing. Chase activates Pro after Dodo sends a verified subscription event, not when the browser returns from checkout.",
@@ -437,6 +456,17 @@ export const productDocs: ProductDoc[] = [
           {
             kind: "text",
             text: "The owner can invite teammates from Settings → Team within the plan’s seat limit. Invitations are bound to an email address and expire after 72 hours. Where email delivery is not configured, copy the generated invitation link and share it privately.",
+          },
+          {
+            kind: "table",
+            caption: "What each role may do",
+            columns: ["Role", "Work the queue", "Settings & team", "Billing"],
+            rows: [
+              ["Owner", "Yes", "Yes", "Yes"],
+              ["Admin", "Yes", "Yes", "No"],
+              ["Operator", "Yes", "No", "No"],
+              ["Viewer", "Read only", "No", "No"],
+            ],
           },
         ],
       },

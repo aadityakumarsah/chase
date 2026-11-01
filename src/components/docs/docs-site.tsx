@@ -29,7 +29,9 @@ import {
   productDocs,
   type DocBlock,
   type ProductDoc,
+  type DocFlowVariant,
 } from "@/lib/product-docs";
+import { ThemeToggle } from "@/components/theme-toggle";
 import styles from "./docs-site.module.css";
 
 const iconBySlug = {
@@ -44,7 +46,61 @@ const iconBySlug = {
   "integrations-and-help": MessageSquareText,
 };
 
-function Flow({ variant }: { variant: "overview" | "rating" | "call" }) {
+/** Node chains for the step-by-step diagrams, keyed by variant. */
+const FLOWS: Record<string, { heading: string; nodes: string[] }> = {
+  overview: {
+    heading: "THE CHASE LOOP",
+    nodes: [
+      "Invoice ledger",
+      "Chase queue",
+      "Bolna voice",
+      "Outcome & actions",
+      "Owner brief",
+    ],
+  },
+  call: {
+    heading: "A RESPECTFUL CALL",
+    nodes: [
+      "Contact gate",
+      "AI disclosure",
+      "Confirm identity",
+      "Take action",
+      "Completed analysis",
+    ],
+  },
+  import: {
+    heading: "GETTING YOUR LEDGER IN",
+    nodes: [
+      "Export or type",
+      "Validate rows",
+      "Attest consent",
+      "Rate accounts",
+      "Queue is ready",
+    ],
+  },
+  payment: {
+    heading: "FROM PROMISE TO PAYMENT",
+    nodes: [
+      "Agree an amount",
+      "Send UPI link",
+      "Customer pays you",
+      "Mark against invoice",
+      "Rating updates",
+    ],
+  },
+  brief: {
+    heading: "THE DAILY OWNER BRIEF",
+    nodes: [
+      "Day's calls close",
+      "Outcomes analysed",
+      "Brief composed",
+      "19:15 IST call",
+      "Ask follow-ups",
+    ],
+  },
+};
+
+function Flow({ variant }: { variant: DocFlowVariant }) {
   if (variant === "rating")
     return (
       <div
@@ -84,38 +140,21 @@ function Flow({ variant }: { variant: "overview" | "rating" | "call" }) {
         </small>
       </div>
     );
-  const nodes =
-    variant === "overview"
-      ? [
-          "Invoice ledger",
-          "Chase queue",
-          "Bolna voice",
-          "Outcome & actions",
-          "Owner brief",
-        ]
-      : [
-          "Contact gate",
-          "AI disclosure",
-          "Confirm identity",
-          "Take action",
-          "Completed analysis",
-        ];
+  const flow = FLOWS[variant] ?? FLOWS.overview;
   return (
-    <div className={styles.flowDiagram} aria-label={nodes.join(" then ")}>
+    <div className={styles.flowDiagram} aria-label={flow.nodes.join(" then ")}>
       <div className={styles.diagramHeading}>
-        <span>
-          {variant === "overview" ? "THE CHASE LOOP" : "A RESPECTFUL CALL"}
-        </span>
-        <span>01 — 05</span>
+        <span>{flow.heading}</span>
+        <span>01 — 0{flow.nodes.length}</span>
       </div>
       <div className={styles.flowNodes}>
-        {nodes.map((node, index) => (
+        {flow.nodes.map((node, index) => (
           <div className={styles.flowItem} key={node}>
             <div className={styles.flowNode}>
               <small>0{index + 1}</small>
               <strong>{node}</strong>
             </div>
-            {index < nodes.length - 1 && (
+            {index < flow.nodes.length - 1 && (
               <ArrowRight
                 className={styles.flowArrow}
                 size={18}
@@ -126,6 +165,51 @@ function Flow({ variant }: { variant: "overview" | "rating" | "call" }) {
         ))}
       </div>
     </div>
+  );
+}
+
+/** Side-by-side comparison, for limits and role permissions. */
+function DocTable({
+  caption,
+  columns,
+  rows,
+}: {
+  caption: string;
+  columns: string[];
+  rows: string[][];
+}) {
+  return (
+    <figure className={styles.tableWrap}>
+      <figcaption>{caption}</figcaption>
+      <div className={styles.tableScroll}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              {columns.map((column) => (
+                <th key={column} scope="col">
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row[0]}>
+                {row.map((cell, index) =>
+                  index === 0 ? (
+                    <th key={index} scope="row">
+                      {cell}
+                    </th>
+                  ) : (
+                    <td key={index}>{cell}</td>
+                  ),
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </figure>
   );
 }
 
@@ -194,6 +278,14 @@ function Block({ block }: { block: DocBlock }) {
           </div>
         </aside>
       );
+    case "table":
+      return (
+        <DocTable
+          caption={block.caption}
+          columns={block.columns}
+          rows={block.rows}
+        />
+      );
     case "flow":
       return <Flow variant={block.variant} />;
   }
@@ -205,7 +297,25 @@ export function DocsSite({ doc }: { doc: ProductDoc }) {
   const searchRef = useRef<HTMLInputElement>(null);
   const currentIndex = productDocs.findIndex((item) => item.slug === doc.slug);
   const previous = productDocs[currentIndex - 1];
-  const next = productDocs[currentIndex + 1];
+
+  /**
+   * Guides appended by scrolling. The page starts as the one that was routed
+   * to, then grows as the reader reaches the end of each.
+   */
+  const [loaded, setLoaded] = useState<ProductDoc[]>([doc]);
+  /** The guide the reader is currently inside; drives the sidebar and TOC. */
+  const [activeSlug, setActiveSlug] = useState(doc.slug);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const docRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const upcoming =
+    productDocs[
+      productDocs.findIndex(
+        (item) => item.slug === loaded[loaded.length - 1].slug,
+      ) + 1
+    ];
+  const active =
+    productDocs.find((item) => item.slug === activeSlug) ?? loaded[0];
   const groups = [...new Set(productDocs.map((item) => item.group))];
   const needle = query.toLowerCase().trim();
   /** Every word a page contains, so a half-remembered phrase still finds it. */
@@ -232,6 +342,50 @@ export function DocsSite({ doc }: { doc: ProductDoc }) {
   const matches = (item: ProductDoc) =>
     !needle || haystack(item).includes(needle);
   const resultCount = productDocs.filter(matches).length;
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !upcoming) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting))
+          setLoaded((current) =>
+            current.some((item) => item.slug === upcoming.slug)
+              ? current
+              : [...current, upcoming],
+          );
+      },
+      // Start fetching before the reader actually hits the bottom.
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [upcoming]);
+
+  // Keep the sidebar, breadcrumb and URL on whichever guide fills the view.
+  useEffect(() => {
+    if (loaded.length < 2) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        const slug = visible?.target.getAttribute("data-doc-slug");
+        if (slug) setActiveSlug(slug);
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5] },
+    );
+    for (const node of Object.values(docRefs.current))
+      if (node) observer.observe(node);
+    return () => observer.disconnect();
+  }, [loaded]);
+
+  useEffect(() => {
+    if (activeSlug === doc.slug) return;
+    const path = activeSlug === "overview" ? "/docs" : `/docs/${activeSlug}`;
+    // replaceState keeps the back button pointing where the reader came from.
+    window.history.replaceState(null, "", path);
+  }, [activeSlug, doc.slug]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -274,6 +428,7 @@ export function DocsSite({ doc }: { doc: ProductDoc }) {
           >
             <Link href="/">Product</Link>
             <Link href="/pricing">Pricing</Link>
+            <ThemeToggle />
             <Link href="/login" className={styles.openApp}>
               Open workspace <ArrowUpRight size={14} />
             </Link>
@@ -340,24 +495,24 @@ export function DocsSite({ doc }: { doc: ProductDoc }) {
                             : `/docs/${item.slug}`
                         }
                         className={
-                          item.slug === doc.slug ? styles.activeLink : ""
+                          item.slug === active.slug ? styles.activeLink : ""
                         }
                         aria-current={
-                          item.slug === doc.slug ? "page" : undefined
+                          item.slug === active.slug ? "page" : undefined
                         }
                         onClick={() => setSidebarOpen(false)}
                       >
                         <Icon size={17} />
                         <span>{item.title}</span>
-                        {item.slug === doc.slug && (
+                        {item.slug === active.slug && (
                           <span className={styles.activeDot} />
                         )}
                       </Link>
                     );
                   })}
-                  {items.some((item) => item.slug === doc.slug) && (
+                  {items.some((item) => item.slug === active.slug) && (
                     <div className={styles.navSections}>
-                      {doc.sections.map((section) => (
+                      {active.sections.map((section) => (
                         <a
                           key={section.id}
                           href={`#${section.id}`}
@@ -394,60 +549,92 @@ export function DocsSite({ doc }: { doc: ProductDoc }) {
           <div className={styles.breadcrumb}>
             <Link href="/docs">Guides</Link>
             <ChevronRight size={14} />
-            <span>{doc.group}</span>
+            <span>{active.group}</span>
             <ChevronRight size={14} />
-            <strong>{doc.title}</strong>
+            <strong>{active.title}</strong>
           </div>
           <div className={styles.articleGrid}>
             <article className={styles.article}>
-              <div className={styles.articleIntro}>
-                <span className={styles.eyebrow}>{doc.eyebrow}</span>
-                <h1>
-                  {doc.title}
-                  <span>.</span>
-                </h1>
-                <p>{doc.description}</p>
-              </div>
-              {doc.sections.map((section) => (
-                <section
-                  id={section.id}
-                  key={section.id}
-                  className={styles.section}
+              {loaded.map((entry, entryIndex) => (
+                <div
+                  key={entry.slug}
+                  data-doc-slug={entry.slug}
+                  ref={(node) => {
+                    docRefs.current[entry.slug] = node;
+                  }}
+                  className={entryIndex > 0 ? styles.continuedDoc : undefined}
                 >
-                  <h2>{section.title}</h2>
-                  {section.blocks.map((block, index) => (
-                    <Block key={`${section.id}-${index}`} block={block} />
+                  {entryIndex > 0 && (
+                    <p className={styles.continuedLabel}>
+                      <span>CONTINUED</span>
+                      {entry.group}
+                    </p>
+                  )}
+                  <div className={styles.articleIntro}>
+                    <span className={styles.eyebrow}>{entry.eyebrow}</span>
+                    <h1>
+                      {entry.title}
+                      <span>.</span>
+                    </h1>
+                    <p>{entry.description}</p>
+                  </div>
+                  {entry.sections.map((section) => (
+                    <section
+                      id={section.id}
+                      key={section.id}
+                      className={styles.section}
+                    >
+                      <h2>{section.title}</h2>
+                      {section.blocks.map((block, index) => (
+                        <Block key={`${section.id}-${index}`} block={block} />
+                      ))}
+                    </section>
                   ))}
-                </section>
+                </div>
               ))}
-              <div className={styles.pageNav}>
-                {previous ? (
+
+              {/* Pulling the next guide in as you reach the end; the sidebar,
+                  table of contents and URL follow whichever one you are in. */}
+              {upcoming ? (
+                <div ref={sentinelRef} className={styles.loadMore}>
+                  <span className={styles.loadSpinner} aria-hidden="true" />
+                  <p>
+                    Loading <strong>{upcoming.title}</strong>…
+                  </p>
                   <Link
                     href={
-                      previous.slug === "overview"
+                      upcoming.slug === "overview"
                         ? "/docs"
-                        : `/docs/${previous.slug}`
+                        : `/docs/${upcoming.slug}`
                     }
                   >
-                    <ArrowLeft size={18} />
-                    <span>
-                      <small>PREVIOUS</small>
-                      <strong>{previous.title}</strong>
-                    </span>
+                    Open it on its own page <ArrowRight size={14} />
                   </Link>
-                ) : (
-                  <span />
-                )}
-                {next && (
-                  <Link href={`/docs/${next.slug}`}>
-                    <span>
-                      <small>UP NEXT</small>
-                      <strong>{next.title}</strong>
-                    </span>
-                    <ArrowRight size={18} />
-                  </Link>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className={styles.pageNav}>
+                  {previous ? (
+                    <Link
+                      href={
+                        previous.slug === "overview"
+                          ? "/docs"
+                          : `/docs/${previous.slug}`
+                      }
+                    >
+                      <ArrowLeft size={18} />
+                      <span>
+                        <small>PREVIOUS</small>
+                        <strong>{previous.title}</strong>
+                      </span>
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                  <span className={styles.endOfGuide}>
+                    You have reached the end of the guide.
+                  </span>
+                </div>
+              )}
               <footer className={styles.footer}>
                 <span>Bolna makes the call. Chase gets you paid.</span>
                 <Link href="/">
@@ -457,7 +644,7 @@ export function DocsSite({ doc }: { doc: ProductDoc }) {
             </article>
             <aside className={styles.toc} aria-label="On this page">
               <p>ON THIS PAGE</p>
-              {doc.sections.map((section) => (
+              {active.sections.map((section) => (
                 <a key={section.id} href={`#${section.id}`}>
                   {section.title}
                 </a>
