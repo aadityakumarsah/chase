@@ -89,7 +89,14 @@ export function isPublicPath(path: string): boolean {
     path === "/" ||
     path === "/api/health" ||
     path.startsWith("/_next/") ||
-    ["/favicon.ico", "/robots.txt", "/sitemap.xml"].includes(path) ||
+    [
+      "/favicon.ico",
+      "/robots.txt",
+      "/sitemap.xml",
+      // Next.js file-convention icons, served from the app directory.
+      "/icon.png",
+      "/apple-icon.png",
+    ].includes(path) ||
     path.startsWith("/assets/") ||
     path.startsWith("/audio/") ||
     path === "/opengraph-image.png"

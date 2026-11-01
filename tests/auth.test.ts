@@ -31,6 +31,8 @@ it("exempts exact public routes without prefix or extension bypasses", () => {
     "/assets/chase-mascot.webp",
     "/audio/walkthrough-01.mp3",
     "/opengraph-image.png",
+    "/icon.png",
+    "/apple-icon.png",
     "/robots.txt",
     "/sitemap.xml",
     "/login",
