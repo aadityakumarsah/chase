@@ -10,6 +10,7 @@ import {
 import { IST } from "@/lib/time";
 import {
   ENTITLEMENTS,
+  TRIAL_ENTITLEMENTS,
   type BillingInterval,
   type BillingTier,
   type Entitlements,
@@ -113,7 +114,9 @@ export async function getBillingState(
     tier,
     source,
     trialEndsAt: business.trialEndsAt,
-    entitlements: ENTITLEMENTS[tier],
+    // A trial unlocks Pro features on deliberately small caps, so evaluating
+    // Chase is possible but running a receivables book on it is not.
+    entitlements: source === "trial" ? TRIAL_ENTITLEMENTS : ENTITLEMENTS[tier],
     subscription,
     dodoCustomerId: business.dodoCustomerId,
   };

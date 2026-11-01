@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRIAL_DAYS } from "@/lib/billing/plans";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { businesses, orgMembers } from "@/lib/db/schema";
@@ -79,8 +80,8 @@ export async function createWorkspace(
         status: "active",
         plan: "trial",
         onboardedAt: new Date(),
-        // 14-day trial from creation; billing enforcement is a later milestone.
-        trialEndsAt: new Date(Date.now() + 14 * 86_400_000),
+        // Short evaluation window; see TRIAL_ENTITLEMENTS for its caps.
+        trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000),
         contactPolicyAcceptedAt: new Date(),
         contactPolicyAcceptedBy: userId,
       })

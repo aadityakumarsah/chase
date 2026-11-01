@@ -127,14 +127,28 @@ export function QueuePanel({
                 </div>
                 {!compact && (
                   <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {item.contactName} · {item.daysPastDue} days overdue
+                    {item.contactName} · {item.phoneMasked} · {item.city}
                   </p>
                 )}
               </div>
               {!compact && (
-                <span className="text-sm font-semibold tabular-nums">
-                  {inr(item.outstandingPaise)}
-                </span>
+                <div className="min-w-0">
+                  <span className="block text-sm font-semibold tabular-nums">
+                    {inr(item.outstandingPaise)}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                    {item.daysPastDue > 0
+                      ? `${item.daysPastDue}d overdue`
+                      : "Not overdue"}
+                  </span>
+                  {item.promisedFor && (
+                    <span className="mt-0.5 block truncate text-[11px] text-emerald-600 dark:text-emerald-500">
+                      Promised{" "}
+                      {item.promisedPaise ? inr(item.promisedPaise) : ""}{" "}
+                      <RelativeTime value={item.promisedFor} />
+                    </span>
+                  )}
+                </div>
               )}
               <div>
                 <div className="flex items-baseline gap-1">

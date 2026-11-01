@@ -20,6 +20,13 @@ export type QueueItem = {
   rules: GateRuleView[];
   nextAllowedAt: string | null;
   demoDebtor: boolean;
+  city: string;
+  segment: string;
+  /** Masked for display; the full number never reaches the browser. */
+  phoneMasked: string;
+  lastContactAt: string | null;
+  promisedFor: string | null;
+  promisedPaise: string | null;
 };
 
 export type DashboardEvent = {

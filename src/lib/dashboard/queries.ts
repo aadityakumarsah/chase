@@ -1,4 +1,5 @@
 import { and, desc, eq, sql as dsql } from "drizzle-orm";
+import { maskPhone } from "@/lib/phone";
 import { z } from "zod";
 import { evaluateContact } from "@/lib/compliance/gate";
 import { explainRating, type RatingResult } from "@/lib/chase/rating";
@@ -66,6 +67,9 @@ type QueueDbRow = {
   last_attempt_at: Date | string | null;
   opted_out: boolean;
   active_promise_for: string | null;
+  active_promise_paise: string | null;
+  city: string;
+  segment: string;
   consent_basis: string | null;
 };
 
@@ -94,7 +98,7 @@ export async function dashboardQueue(
         max(created_at) last_attempt_at
       from calls where purpose='collection' group by debtor_id
     ), active_promises as (
-      select distinct on (debtor_id) debtor_id, promised_for
+      select distinct on (debtor_id) debtor_id, promised_for, amount_paise
       from promises where status='pending' and promised_for >= ${today}
       order by debtor_id, promised_for
     ), active_optouts as (
@@ -102,6 +106,7 @@ export async function dashboardQueue(
     )
     select d.id debtor_id, d.shop_name, d.contact_name, d.phone_e164,
       d.preferred_language, d.status, d.first_contact_disclosed_at, d.consent_basis,
+      d.city, d.segment,
       b.id business_id, b.call_window_start::text, b.call_window_end::text,
       b.max_attempts_per_day, b.max_attempts_per_week, b.min_gap_hours, b.demo_window_override,
       coalesce(i.outstanding_paise,'0') outstanding_paise, coalesce(i.days_past_due,0) days_past_due,
@@ -109,7 +114,8 @@ export async function dashboardQueue(
       coalesce(r.components,'{}'::jsonb) components, coalesce(r.next_action,'none') next_action,
       coalesce(r.reasons,'[]'::jsonb) reasons, coalesce(r.rationale,'Not rated yet') rationale,
       coalesce(a.attempts_today,0) attempts_today, coalesce(a.attempts_week,0) attempts_week,
-      a.last_attempt_at, coalesce(o.opted_out,false) opted_out, p.promised_for::text active_promise_for
+      a.last_attempt_at, coalesce(o.opted_out,false) opted_out, p.promised_for::text active_promise_for,
+      p.amount_paise::text active_promise_paise
     from debtors d
     join businesses b on b.id=d.business_id
     left join rating_ranked r on r.debtor_id=d.id and r.rn=1
@@ -172,6 +178,12 @@ export async function dashboardQueue(
       nextAction: row.next_action,
       reasons: row.reasons ?? [],
       rationale: row.rationale,
+      city: row.city,
+      segment: row.segment,
+      phoneMasked: maskPhone(row.phone_e164),
+      lastContactAt: asDate(row.last_attempt_at)?.toISOString() ?? null,
+      promisedFor: row.active_promise_for,
+      promisedPaise: row.active_promise_paise,
       allowed: decision.allowed,
       rules: decision.rules,
       nextAllowedAt: decision.nextAllowedAt?.toISOString() ?? null,
@@ -415,7 +427,33 @@ export const debtorFiltersSchema = z.object({
   status: z.string().max(40).optional(),
   action: z.string().max(80).optional(),
   search: z.string().max(100).optional(),
+  city: z.string().max(120).optional(),
+  segment: z.string().max(40).optional(),
+  /** Outstanding balance bounds, in whole rupees. */
+  minRupees: z.coerce.number().int().min(0).optional(),
+  maxRupees: z.coerce.number().int().min(0).optional(),
+  /** Only accounts carrying a pending promise, or only those without one. */
+  promise: z.enum(["any", "with", "without"]).default("any"),
+  sort: z
+    .enum(["score", "outstanding", "overdue", "name", "promise"])
+    .default("score"),
+  direction: z.enum(["asc", "desc"]).default("desc"),
 });
+
+const SORTERS: Record<
+  "score" | "outstanding" | "overdue" | "name" | "promise",
+  (a: QueueItem, b: QueueItem) => number
+> = {
+  score: (a, b) => (a.score ?? -1) - (b.score ?? -1),
+  outstanding: (a, b) =>
+    Number(BigInt(a.outstandingPaise) - BigInt(b.outstandingPaise)),
+  overdue: (a, b) => a.daysPastDue - b.daysPastDue,
+  name: (a, b) => b.shopName.localeCompare(a.shopName),
+  // Accounts with no promise sort last whichever direction is chosen.
+  promise: (a, b) =>
+    (a.promisedFor ? Date.parse(a.promisedFor) : Number.NEGATIVE_INFINITY) -
+    (b.promisedFor ? Date.parse(b.promisedFor) : Number.NEGATIVE_INFINITY),
+};
 
 export async function debtorList(
   businessId: string,
@@ -423,16 +461,40 @@ export async function debtorList(
 ) {
   const filters = debtorFiltersSchema.parse(input);
   const needle = filters.search?.trim().toLocaleLowerCase();
-  return (await dashboardQueue(businessId)).filter(
-    (item) =>
+  const city = filters.city?.trim().toLocaleLowerCase();
+  // Rupee bounds are compared in paise so no floating point enters the filter.
+  const min =
+    filters.minRupees === undefined ? null : BigInt(filters.minRupees) * 100n;
+  const max =
+    filters.maxRupees === undefined ? null : BigInt(filters.maxRupees) * 100n;
+  const matched = (await dashboardQueue(businessId)).filter((item) => {
+    const outstanding = BigInt(item.outstandingPaise);
+    return (
       (!filters.band || item.band === filters.band) &&
       (!filters.language || item.language === filters.language) &&
       (!filters.status || item.status === filters.status) &&
       (!filters.action || item.nextAction === filters.action) &&
+      (!filters.segment || item.segment === filters.segment) &&
+      (!city || item.city.toLocaleLowerCase().includes(city)) &&
+      (min === null || outstanding >= min) &&
+      (max === null || outstanding <= max) &&
+      (filters.promise === "any" ||
+        (filters.promise === "with"
+          ? item.promisedFor !== null
+          : item.promisedFor === null)) &&
       (!needle ||
         item.shopName.toLocaleLowerCase().includes(needle) ||
-        item.contactName.toLocaleLowerCase().includes(needle)),
+        item.contactName.toLocaleLowerCase().includes(needle) ||
+        item.phoneMasked.includes(needle) ||
+        item.city.toLocaleLowerCase().includes(needle))
+    );
+  });
+  const compare = SORTERS[filters.sort];
+  const sorted = matched.sort((a, b) =>
+    filters.direction === "desc" ? compare(b, a) : compare(a, b),
   );
+  // Rank reflects the order the user is actually looking at.
+  return sorted.map((item, index) => ({ ...item, rank: index + 1 }));
 }
 
 export async function debtorDetail(businessId: string, id: string) {

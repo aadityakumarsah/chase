@@ -3,20 +3,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  ArrowUpRight,
   AudioLines,
   Bot,
+  BookOpen,
+  CreditCard,
   FileText,
   FlaskConical,
   LayoutDashboard,
+  Maximize2,
+  Minimize2,
+  PanelLeft,
   Settings,
   ShieldCheck,
   Sparkles,
   Users,
-  PanelLeft,
-  Maximize2,
-  Minimize2,
-  ArrowUpRight,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
+import useSWR from "swr";
+import { apiFetch } from "@/lib/dashboard/client";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import {
@@ -34,16 +40,119 @@ import {
   type AccountWorkspace,
 } from "./account-menu";
 
-const navigation = [
-  ["/dashboard", "Overview", LayoutDashboard],
-  ["/debtors", "Accounts", Users],
-  ["/brief", "Daily brief", FileText],
-  ["/compliance", "Compliance", ShieldCheck],
-  ["/ai", "AI insights", Bot],
-  ["/prompt-prs", "Prompt improvements", Sparkles],
-  ["/lab", "Voice lab", FlaskConical],
-  ["/settings", "Settings", Settings],
-] as const;
+type NavItem = readonly [string, string, LucideIcon];
+type NavGroup = { heading: string; items: readonly NavItem[] };
+
+const navigation: readonly NavGroup[] = [
+  {
+    heading: "Workspace",
+    items: [
+      ["/dashboard", "Overview", LayoutDashboard],
+      ["/debtors", "Accounts", Users],
+      ["/brief", "Daily brief", FileText],
+      ["/compliance", "Compliance", ShieldCheck],
+    ],
+  },
+  {
+    heading: "Intelligence & tools",
+    items: [
+      ["/ai", "AI insights", Bot],
+      ["/prompt-prs", "Prompt improvements", Sparkles],
+      ["/lab", "Voice lab", FlaskConical],
+    ],
+  },
+  {
+    heading: "Account",
+    items: [
+      ["/settings/billing", "Plan & billing", CreditCard],
+      ["/settings", "Settings", Settings],
+      ["/docs", "Documentation", BookOpen],
+    ],
+  },
+];
+
+const FLAT_NAV: readonly NavItem[] = navigation.flatMap((group) => group.items);
+
+/** Tier labels the sidebar card shows; keep in step with src/lib/billing/plans.ts. */
+const TIER_LABEL: Record<string, string> = {
+  free: "Free",
+  pro: "Pro",
+  enterprise: "Enterprise",
+};
+
+type BillingSummary = {
+  tier: string;
+  source: string;
+  entitlements: { debtors: number | null; callsPerMonth: number | null };
+  usage: { debtors: number; callsThisMonth: number };
+  trialEndsAt: string | null;
+};
+
+/**
+ * Plan state in the sidebar.
+ *
+ * Shows what the workspace is entitled to and how much of it is gone, because a
+ * limit the customer cannot see is a limit they only discover by being blocked.
+ */
+function PlanCard({ onNavigate }: { onNavigate: () => void }) {
+  const { data } = useSWR<BillingSummary>("/api/billing", apiFetch, {
+    refreshInterval: 60_000,
+  });
+  if (!data) return null;
+  const paid = data.tier !== "free";
+  const trialing = data.source === "trial";
+  const callLimit = data.entitlements.callsPerMonth;
+  const used = data.usage.callsThisMonth;
+  const share =
+    callLimit === null
+      ? 0
+      : Math.min(100, Math.round((used / callLimit) * 100));
+  const tight = callLimit !== null && used >= callLimit * 0.8;
+  return (
+    <Link
+      href="/settings/billing"
+      onClick={onNavigate}
+      className="mx-4 mb-3 block rounded-lg border bg-background p-3 transition-colors hover:border-foreground/25"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold">
+          {TIER_LABEL[data.tier] ?? data.tier} plan
+        </span>
+        {trialing ? (
+          <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-500">
+            TRIAL
+          </span>
+        ) : (
+          !paid && (
+            <span className="flex items-center gap-1 text-[10px] font-medium text-primary">
+              <Zap size={11} /> Upgrade
+            </span>
+          )
+        )}
+      </div>
+      {callLimit === null ? (
+        <p className="mt-1.5 text-[10px] text-muted-foreground">
+          Unlimited calls and accounts
+        </p>
+      ) : (
+        <>
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                tight ? "bg-amber-500" : "bg-foreground/60",
+              )}
+              style={{ width: `${share}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-[10px] text-muted-foreground">
+            {used}/{callLimit} calls this month
+          </p>
+        </>
+      )}
+    </Link>
+  );
+}
 
 export function DashboardShell({
   children,
@@ -109,10 +218,13 @@ export function DashboardShell({
       setFocusMode((value) => !value);
     }
   }
+  // Longest match wins so /settings/billing does not resolve to /settings.
   const activeLabel =
-    navigation.find(
-      ([href]) => pathname === href || pathname.startsWith(`${href}/`),
-    )?.[1] ?? "Workspace";
+    [...FLAT_NAV]
+      .sort(([a], [b]) => b.length - a.length)
+      .find(
+        ([href]) => pathname === href || pathname.startsWith(`${href}/`),
+      )?.[1] ?? "Workspace";
   const sidebar = (
     <>
       <Link
@@ -133,40 +245,45 @@ export function DashboardShell({
       </div>
       <nav
         aria-label="Main navigation"
-        className="flex-1 space-y-1 overflow-y-auto px-3 py-6"
+        className="flex-1 space-y-6 overflow-y-auto px-3 py-6"
       >
-        {navigation.map(([href, label, Icon], index) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
-          return (
-            <div key={href}>
-              {(index === 0 || index === 4) && (
-                <p
+        {navigation.map((group) => (
+          <div key={group.heading} className="space-y-1">
+            <p className="px-3 pb-1 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+              {group.heading}
+            </p>
+            {group.items.map(([href, label, Icon]) => {
+              // Longest-prefix matching keeps /settings from claiming its children.
+              const active =
+                pathname === href ||
+                (pathname.startsWith(`${href}/`) &&
+                  !FLAT_NAV.some(
+                    ([other]) =>
+                      other.length > href.length &&
+                      (pathname === other || pathname.startsWith(`${other}/`)),
+                  ));
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMobileOpen(false)}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "px-3 pb-2 text-[10px] font-medium tracking-widest text-muted-foreground uppercase",
-                    index === 4 && "mt-7",
+                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-[13px] transition-colors",
+                    active
+                      ? "bg-accent font-medium text-foreground"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                   )}
                 >
-                  {index === 0 ? "Workspace" : "Intelligence & tools"}
-                </p>
-              )}
-              <Link
-                href={href}
-                onClick={() => setMobileOpen(false)}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-[13px] transition-colors",
-                  active
-                    ? "bg-accent font-medium text-foreground"
-                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                )}
-              >
-                <Icon size={16} strokeWidth={1.7} />
-                {label}
-              </Link>
-            </div>
-          );
-        })}
+                  <Icon size={16} strokeWidth={1.7} />
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
+      <PlanCard onNavigate={() => setMobileOpen(false)} />
       <a
         href="https://sagarmathalabs.com"
         target="_blank"

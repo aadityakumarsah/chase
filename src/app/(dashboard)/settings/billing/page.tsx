@@ -1,5 +1,7 @@
 import { PageHeading } from "@/components/page-heading";
+import { SettingsNav } from "@/components/dashboard/settings-nav";
 import { BillingPage } from "@/components/dashboard/billing-page";
+
 export default async function Page({
   searchParams,
 }: {
@@ -7,11 +9,13 @@ export default async function Page({
 }) {
   const { checkout } = await searchParams;
   return (
-    <div className="space-y-6 p-6">
+    <main className="space-y-6 p-5 lg:p-8">
       <PageHeading
-        title="Plan and billing"
-        description="See your workspace limits, upgrade, and manage your Dodo subscription."
+        eyebrow="Workspace"
+        title="Plan & billing"
+        description="Your limits, what you have used this month, and how to change plan."
       />
+      <SettingsNav />
       <BillingPage
         checkout={
           checkout === "done"
@@ -21,6 +25,6 @@ export default async function Page({
               : null
         }
       />
-    </div>
+    </main>
   );
 }

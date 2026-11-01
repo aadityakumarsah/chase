@@ -39,10 +39,35 @@ export type Entitlements = {
   prioritySupport: boolean;
 };
 
+/**
+ * How long a new workspace may evaluate Chase on Pro features.
+ *
+ * Short on purpose: the trial exists to prove the product on a few real
+ * accounts, not to run a book on for free.
+ */
+export const TRIAL_DAYS = 7;
+
+/**
+ * Caps that apply while a workspace is trialing.
+ *
+ * Pro features are unlocked so the product can be judged honestly, but the
+ * metered limits stay small so the trial cannot replace a subscription.
+ */
+export const TRIAL_ENTITLEMENTS: Entitlements = {
+  debtors: 50,
+  callsPerMonth: 25,
+  seats: 3,
+  campaigns: true,
+  dailyBrief: true,
+  promptPrs: true,
+  apiAccess: false,
+  prioritySupport: false,
+};
+
 export const ENTITLEMENTS: Record<BillingTier, Entitlements> = {
   free: {
-    debtors: 25,
-    callsPerMonth: 30,
+    debtors: 10,
+    callsPerMonth: 10,
     seats: 2,
     campaigns: false,
     dailyBrief: false,
@@ -95,12 +120,12 @@ export const PLANS: Record<BillingTier, PlanDefinition> = {
   free: {
     tier: "free",
     name: "Free",
-    tagline: "Try Chase on a handful of accounts, free forever.",
+    tagline: "Keep a handful of accounts moving, free forever.",
     pricing: null,
     cta: "Start free",
     features: [
-      "Up to 25 debtor accounts",
-      "30 voice calls a month",
+      "Up to 10 debtor accounts",
+      "10 voice calls a month",
       "2 team members",
       "Chase Rating queue and dossiers",
       "UPI payment links to your own VPA",

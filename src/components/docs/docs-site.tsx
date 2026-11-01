@@ -207,10 +207,31 @@ export function DocsSite({ doc }: { doc: ProductDoc }) {
   const previous = productDocs[currentIndex - 1];
   const next = productDocs[currentIndex + 1];
   const groups = [...new Set(productDocs.map((item) => item.group))];
+  const needle = query.toLowerCase().trim();
+  /** Every word a page contains, so a half-remembered phrase still finds it. */
+  const haystack = (item: ProductDoc) =>
+    [
+      item.title,
+      item.description,
+      item.group,
+      ...item.sections.flatMap((section) => [
+        section.title,
+        ...section.blocks.flatMap((block) => {
+          if (block.kind === "text") return [block.text];
+          if (block.kind === "list") return block.items;
+          if (block.kind === "steps")
+            return block.items.flatMap((step) => [step.title, step.text]);
+          if (block.kind === "note") return [block.title, block.text];
+          if (block.kind === "code") return [block.label, block.code];
+          return [];
+        }),
+      ]),
+    ]
+      .join(" ")
+      .toLowerCase();
   const matches = (item: ProductDoc) =>
-    `${item.title} ${item.description} ${item.group} ${item.sections.map((section) => section.title).join(" ")}`
-      .toLowerCase()
-      .includes(query.toLowerCase().trim());
+    !needle || haystack(item).includes(needle);
+  const resultCount = productDocs.filter(matches).length;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -334,14 +355,32 @@ export function DocsSite({ doc }: { doc: ProductDoc }) {
                       </Link>
                     );
                   })}
+                  {items.some((item) => item.slug === doc.slug) && (
+                    <div className={styles.navSections}>
+                      {doc.sections.map((section) => (
+                        <a
+                          key={section.id}
+                          href={`#${section.id}`}
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          {section.title}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
-            {query && !productDocs.some(matches) && (
-              <p className={styles.noResults}>
-                No guide pages match “{query}”.
-              </p>
-            )}
+            {needle &&
+              (resultCount === 0 ? (
+                <p className={styles.noResults}>
+                  No guide pages match “{query}”.
+                </p>
+              ) : (
+                <p className={styles.resultCount}>
+                  {resultCount} of {productDocs.length} pages match
+                </p>
+              ))}
           </nav>
           <div className={styles.sidebarBottom}>
             <span>NEED A HAND?</span>

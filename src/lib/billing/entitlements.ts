@@ -91,7 +91,10 @@ export async function checkLimit(
 
   const label = LIMIT_LABEL[key];
   const required = used + additional;
-  const upgradeTo = upgradeForLimit(key, state.tier, required);
+  // A trialing workspace holds the Pro tier but has bought nothing, so the
+  // upgrade it needs is Pro itself rather than the tier above it.
+  const from: BillingTier = state.source === "trial" ? "free" : state.tier;
+  const upgradeTo = upgradeForLimit(key, from, required);
   const reason =
     additional === 1
       ? `Your ${state.tier === "free" ? "Free" : state.tier} plan allows ${limit} ${label}. You are using ${used}.`
@@ -106,7 +109,10 @@ export async function checkFeature(
 ): Promise<Decision> {
   const state = await getBillingState(businessId);
   if (state.entitlements[key]) return { ok: true };
-  const upgradeTo = upgradeForFeature(key, state.tier);
+  const upgradeTo = upgradeForFeature(
+    key,
+    state.source === "trial" ? "free" : state.tier,
+  );
   return {
     ok: false,
     reason: upgradeTo

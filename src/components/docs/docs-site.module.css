@@ -214,6 +214,35 @@
   color: #667063;
   font-size: 13px;
 }
+.resultCount {
+  padding: 8px 13px;
+  color: #8b948a;
+  font-size: 12px;
+}
+/* Section links for the page being read, indented under its nav entry. */
+.navSections {
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 4px 20px;
+  padding-left: 11px;
+  border-left: 1px solid #e0e6dd;
+}
+.navSections a {
+  min-height: 0;
+  padding: 6px 9px;
+  border-radius: 6px;
+  color: #74806f;
+  font-size: 12.5px;
+  font-weight: 480;
+  line-height: 1.35;
+  transition:
+    background 0.18s,
+    color 0.18s;
+}
+.navSections a:hover {
+  color: #25392a;
+  background: #eef3ec;
+}
 .sidebarBottom {
   margin-top: auto;
   padding: 23px 12px 0;

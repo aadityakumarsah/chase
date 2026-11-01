@@ -16,7 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageHeading } from "@/components/page-heading";
 import { RelativeTime } from "@/components/relative-time";
 import { apiFetch, sentence } from "@/lib/dashboard/client";
 import type { settingsDashboard } from "@/lib/dashboard/queries";
@@ -55,39 +54,38 @@ export function SettingsPage() {
 
   if (!data)
     return (
-      <main className="space-y-5 p-8">
+      <div className="space-y-5">
         <Skeleton className="h-24" />
         <Skeleton className="h-[560px]" />
-      </main>
+      </div>
     );
 
   return (
-    <main className="space-y-6 p-5 lg:p-8">
-      <PageHeading
-        eyebrow="Workspace"
-        title="Settings"
-        description="Configuration readiness and integration activity. Secret values are never returned to the browser."
-        actions={
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => void healthCheck()}
-              disabled={checking}
-            >
-              <Activity size={15} /> Health check
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Integrations & readiness</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Configuration status and integration activity. Secret values are
+            never returned to the browser.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => void healthCheck()}
+            disabled={checking}
+          >
+            <Activity size={15} /> Health check
+          </Button>
+          {data.canManage && data.syncAvailable && (
+            <Button onClick={() => void syncAgents()} disabled={syncing}>
+              <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />{" "}
+              Sync agents
             </Button>
-            {data.canManage && data.syncAvailable && (
-              <Button onClick={() => void syncAgents()} disabled={syncing}>
-                <RefreshCw
-                  size={15}
-                  className={syncing ? "animate-spin" : ""}
-                />{" "}
-                Sync agents
-              </Button>
-            )}
-          </div>
-        }
-      />
+          )}
+        </div>
+      </div>
       <Card className="shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -192,7 +190,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </div>
   );
 }
 
